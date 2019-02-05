@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>[%-5level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+    <root level="debug">
+        <appender-ref ref="console"/>
+    </root>
+
+    <!-- hides "NetCDF (and FITS) instance failure" -->
+    <logger name="ncsa.hdf.object.FileFormat" level="warn">
+        <appender-ref ref="console"/>
+    </logger>
+    <logger name="ncsa.hdf.object.h5.H5ScalarDS" level="warn">
+        <appender-ref ref="console"/>
+    </logger>
+
+</configuration>
