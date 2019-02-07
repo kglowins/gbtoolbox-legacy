@@ -1,5 +1,9 @@
 package com.github.kglowins.gbtoolbox.algorithms;
 
+import com.github.kglowins.gbtoolbox.enums.ColormapNames;
+import com.github.kglowins.gbtoolbox.enums.PointGroup;
+import com.github.kglowins.gbtoolbox.utils.ColorMaps;
+import com.github.kglowins.gbtoolbox.utils.PaintUtilities;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -28,13 +32,16 @@ import net.sf.javaml.core.kdtree.KeyDuplicateException;
 import net.sf.javaml.core.kdtree.KeySizeException;
 
 
-import com.github.kglowins.gbtoolbox.utils.ColorMaps;
-import com.github.kglowins.gbtoolbox.utils.PaintUtilities;
-import com.github.kglowins.gbtoolbox.enums.ColormapNames;
-import com.github.kglowins.gbtoolbox.enums.PointGroup;
-
 public class GBCD_GBPB_PreviewFigure extends JPanel {
 	
+	private boolean automaticLevels = true;
+	private ArrayList<Float> isoLevels = null;
+	
+	private boolean shiftedBegin = false;
+	private boolean shiftedEnd = false;
+	
+	private float scaleBegin = 0f;
+	private float scaleEnd = 1f;
 	
 	private static final double SQRT3 = FastMath.sqrt(3d);
 	private static final double TANPI8 = FastMath.tan(0.125d * FastMath.PI);
@@ -45,7 +52,8 @@ public class GBCD_GBPB_PreviewFigure extends JPanel {
 	private static int GAPY = 20;
 	private static int LEGENDX = 110;
 	
-	private static int WIDTH = 300;
+	private static int WIDTH = 350;
+	private static int GAP2 = 90;
 		
 	private ArrayList<Integer> x;
 	private ArrayList<Integer> y;	
@@ -60,7 +68,11 @@ public class GBCD_GBPB_PreviewFigure extends JPanel {
 	
 	private Color[] colorLevels;
 	
-	private double min, max;
+	private double truemin, truemax;
+	private double scmin, scmax;
+//	private double colmin, colmax;
+
+
 	
 	private int minx, maxx;
 	private int miny, maxy;
@@ -73,8 +85,8 @@ public class GBCD_GBPB_PreviewFigure extends JPanel {
 	
 	private ColormapNames colmap;
 	
-	private float scalemin;
-	private float scalemax;
+	private final float scalemin = 0f;
+	private final float scalemax = 1f;
 	
 	
 	private class DistPt {
@@ -117,19 +129,36 @@ public class GBCD_GBPB_PreviewFigure extends JPanel {
 		isClear = true;
 	}
 	
-	public final void setScale(float min, float max) {
+	/*public final void setScale(float min, float max) {
 		scalemin = min;
 		scalemax = max;
+	}*/
+	
+	public final void setShiftedScaleBegin(float scaleBegin) {
+		
+		this.scaleBegin = scaleBegin;
+		shiftedBegin = true;				
 	}
 	
+	public final void setShiftedScaleEnd(float scaleEnd) {
+		
+		this.scaleEnd = scaleEnd;
+		shiftedEnd = true;
+				
+	}
+	
+	public final void setDefaultScale() {
+		shiftedEnd = false;
+		shiftedBegin = false;
+	}
 	
 	public final void setPoints(ArrayList<Double> x, ArrayList<Double> y, ArrayList<Double> mrd, int fontsize, int decplaces) {
 		
 		this.fontsize = fontsize;		
 		this.decPlaces = decplaces;
 		
-		min = Double.MAX_VALUE;
-		max = Double.MIN_VALUE;
+		truemin = Double.MAX_VALUE;
+		truemax = Double.MIN_VALUE;
 					
 		minx = 0;// Integer.MAX_VALUE;
 		maxx = 2*RADIUS;//Integer.MIN_VALUE;
@@ -137,10 +166,16 @@ public class GBCD_GBPB_PreviewFigure extends JPanel {
 		miny = 0;//Integer.MAX_VALUE;
 		maxy = 2*RADIUS;//Integer.MIN_VALUE;
 		
+		truemin = Double.MAX_VALUE;
+		truemax = Double.MIN_VALUE;
+					
 		for(double val : mrd) {
-			if(val > max) max = val;
-			if(val < min) min = val;
+			if(val > truemax) truemax = val;
+			if(val < truemin) truemin = val;
 		}
+		
+		if(shiftedBegin) scmin = scaleBegin; else scmin = truemin;
+		if(shiftedEnd) scmax = scaleEnd; else scmax = truemax;
 						
 		this.mrd = new ArrayList<Double>();
 		this.x = new ArrayList<Integer>();
@@ -148,7 +183,7 @@ public class GBCD_GBPB_PreviewFigure extends JPanel {
 		
 		for(int i = 0; i < x.size(); i++) {
 			
-			this.mrd.add( (mrd.get(i) - min) / (max - min) );
+			this.mrd.add( (mrd.get(i) - scmin) / (scmax - scmin) );
 			
 			final int newX = RADIUS + (int)Math.round(x.get(i) * RADIUS);
 			final int newY = RADIUS - (int)Math.round(y.get(i) * RADIUS);
@@ -163,7 +198,9 @@ public class GBCD_GBPB_PreviewFigure extends JPanel {
 			if(newY < miny) miny = newY;			
 		}		
 		
-			
+		
+	
+		
 		
 		for(int i = 0; i < x.size(); i++) {
 			
@@ -171,10 +208,24 @@ public class GBCD_GBPB_PreviewFigure extends JPanel {
 			this.y.set(i, this.y.get(i) - miny);
 		}	
 		
+		
+		
+		
+		if(!automaticLevels) {
+			for(int i = 0; i < isoLevels.size(); i++) isoLevels.set(i, (float) ((isoLevels.get(i) - scmin) / (scmax - scmin)));
+		} else {
+			
+			isoLevels = new ArrayList<Float>();
+			
+			for(int i = 1; i <= NLEVELS; i++) isoLevels.add( (float)i / (float)(NLEVELS+1));
+		}
+		
+		
+		
 		calcMap();
 	}
 	
-	//TODO
+
 	public final void setPointsSST(ArrayList<Double> x, ArrayList<Double> y, ArrayList<Double> mrd, int fontsize, int decplaces) {
 		
 		this.fontsize = fontsize;		
@@ -234,15 +285,18 @@ public class GBCD_GBPB_PreviewFigure extends JPanel {
 	    		default: break;
 	    	}   	
 		}
-		System.out.println(x.size() + " -> " + xSST.size());
 		
-		min = Double.MAX_VALUE;
-		max = Double.MIN_VALUE;
-							
+		truemin = Double.MAX_VALUE;
+		truemax = Double.MIN_VALUE;
+					
 		for(double val : mrdSST) {
-			if(val > max) max = val;
-			if(val < min) min = val;
+			if(val > truemax) truemax = val;
+			if(val < truemin) truemin = val;
 		}
+		
+		if(shiftedBegin) scmin = scaleBegin; else scmin = truemin;
+		if(shiftedEnd) scmax = scaleEnd; else scmax = truemax;
+		
 						
 		this.mrd = new ArrayList<Double>();
 		this.x = new ArrayList<Integer>();
@@ -250,11 +304,9 @@ public class GBCD_GBPB_PreviewFigure extends JPanel {
 		
 		for(int i = 0; i < xSST.size(); i++) {
 			
-			this.mrd.add( (mrdSST.get(i) - min) / (max - min) );
+			this.mrd.add( (mrdSST.get(i) - scmin) / (scmax - scmin) );
 			
-/*			final int newX = GAPX + (2*RADIUS-WIDTH) + (int)Math.round(x.get(i) * WIDTH);
-			final int newY = GAPY + (2*RADIUS-WIDTH)/2 - (int)Math.round(y.get(i) * WIDTH);
-	*/		
+
 			final int newX = (int)Math.round(xSST.get(i) * WIDTH);
 			final int newY = (int)Math.round(ySST.get(i) * WIDTH);
 
@@ -262,7 +314,20 @@ public class GBCD_GBPB_PreviewFigure extends JPanel {
 			this.x.add(newX);
 			this.y.add(newY);					
 		}		
-		System.out.println(TANPI8);
+		
+		
+		
+		if(!automaticLevels) {
+			for(int i = 0; i < isoLevels.size(); i++) isoLevels.set(i, (float) ((isoLevels.get(i) - scmin) / (scmax - scmin)));
+		} else {
+			
+			isoLevels = new ArrayList<Float>();
+			
+			for(int i = 1; i <= NLEVELS; i++) isoLevels.add( (float)i / (float)(NLEVELS+1));
+		}
+		
+
+		
 		calcMapSST();
 	}
 	
@@ -299,31 +364,51 @@ public class GBCD_GBPB_PreviewFigure extends JPanel {
 	}
 	
 	
-	public final void setNLevels(int nlev) {
+/*	public final void setNLevels(int nlev) {
+		NLEVELS = nlev;
+	}
+	*/
+	
+
+	
+	public final void setAutomaticIsolines(int nlev) {
+		
+		automaticLevels = true;
 		NLEVELS = nlev;
 	}
 	
+	public final void setFixedIsolines(ArrayList<Float> levels) {
+		
+		automaticLevels = false;
+		NLEVELS = levels.size();
+		isoLevels = levels;
+	}
 	
-	//TODO
+	
 	private final void calcMapSST() {
 		
 		
 		colorLevels = new Color[NLEVELS + 1];
 		
-		colorLevels[0] = mapColors(FastMath.max(0f, scalemin));
-		colorLevels[NLEVELS] = mapColors(FastMath.min(1f, scalemax));
+		colorLevels[0] = mapColors(0f);
+		colorLevels[NLEVELS] = mapColors(1f);
 				
 								
-		for(int i = 1; i < NLEVELS; i++) {
+		
 			
-			float color2map = scalemin + (float)i / (float)(NLEVELS)*(scalemax-scalemin);
+		for(int i = 1; i < isoLevels.size(); i++) {
+				
+			float color2map = isoLevels.get(i);
+				
 			if(color2map > 1f) color2map = 1f;
 			if(color2map < 0f) color2map = 0f;			
-					
+				
 			colorLevels[i] = mapColors(color2map);
 		}
 		
-	
+		
+		
+		
 		KDTree kd = new KDTree(2);
 		try {
 			for(int k = 0; k < x.size(); k++)
@@ -333,7 +418,6 @@ public class GBCD_GBPB_PreviewFigure extends JPanel {
 			e.printStackTrace();
 		} 
 		
-		//TODO ?
 		final int sizeX = WIDTH + 1;
 		final int sizeY = WIDTH + 1;
 		
@@ -408,7 +492,32 @@ public class GBCD_GBPB_PreviewFigure extends JPanel {
 					denominator += invDist;					
 				}
 				
-				pixelCols[i][j] =  colorLevels[(int) Math.min(NLEVELS, Math.floor(nominator / denominator * (NLEVELS+1))) ];				
+							
+			
+					
+				int which = -1;
+					
+				if(nominator/denominator < isoLevels.get(0) ) {
+					pixelCols[i][j] =  colorLevels[ 0 ];
+					
+				} else if (nominator/denominator >= isoLevels.get(isoLevels.size() - 1) ) {
+						
+					pixelCols[i][j] =  colorLevels[ NLEVELS ];
+						
+				} else {
+					for(int k = 0; k < isoLevels.size()-1; k++) {
+						
+						if(nominator / denominator >= isoLevels.get(k) && nominator / denominator < isoLevels.get(k+1) ) {
+							which = k+1;
+							break;
+						}
+							
+					}
+					pixelCols[i][j] =  colorLevels[ which ];
+						
+				}
+	
+								
 			}			
 		}
 		
@@ -421,23 +530,23 @@ public class GBCD_GBPB_PreviewFigure extends JPanel {
 		
 		colorLevels = new Color[NLEVELS + 1];
 		
-		colorLevels[0] = mapColors(FastMath.max(0f, scalemin));
-		colorLevels[NLEVELS] = mapColors(FastMath.min(1f, scalemax));
+		colorLevels[0] = mapColors(0f);
+		colorLevels[NLEVELS] = mapColors(1f);
+				
 								
-		for(int i = 1; i < NLEVELS; i++) {
+		
 			
-			float color2map = scalemin + (float)i / (float)(NLEVELS)*(scalemax-scalemin);
+		for(int i = 1; i < isoLevels.size(); i++) {
+				
+			float color2map = isoLevels.get(i);
+				
 			if(color2map > 1f) color2map = 1f;
 			if(color2map < 0f) color2map = 0f;			
-					
+				
 			colorLevels[i] = mapColors(color2map);
 		}
 		
-		/*colorLevels[0] = mapColors(0);
-		colorLevels[NLEVELS] = mapColors(1);
-								
-		for(int i = 1; i < NLEVELS; i++) colorLevels[i] = mapColors((float)i / (float)(NLEVELS));
-		*/
+		
 	
 		KDTree kd = new KDTree(2);
 		
@@ -484,7 +593,33 @@ public class GBCD_GBPB_PreviewFigure extends JPanel {
 					denominator += invDist;					
 				}
 				
-				pixelCols[i][j] =  colorLevels[(int) Math.min(NLEVELS, Math.floor(nominator / denominator * (NLEVELS+1))) ];				
+				
+				
+				
+				int which = -1;
+					
+				if(nominator/denominator < isoLevels.get(0) ) {
+					pixelCols[i][j] =  colorLevels[ 0 ];
+					
+				} else if (nominator/denominator >= isoLevels.get(isoLevels.size() - 1) ) {
+						
+					pixelCols[i][j] =  colorLevels[ NLEVELS ];
+						
+				} else {
+					for(int k = 0; k < isoLevels.size()-1; k++) {
+						
+						if(nominator / denominator >= isoLevels.get(k) && nominator / denominator < isoLevels.get(k+1) ) {
+							which = k+1;
+							break;
+						}
+							
+					}
+					pixelCols[i][j] =  colorLevels[ which ];
+						
+				}
+				
+				
+			
 			}			
 		}
 		
@@ -582,8 +717,8 @@ public class GBCD_GBPB_PreviewFigure extends JPanel {
 				for(int i = 0; i < WIDTH; i++) {
 					for(int j = 0; j < WIDTH; j++) {
 			
-						final int posx = GAPX + 200 + i;
-						final int posy = GAPY + 400 - j;
+						final int posx = GAPX + 2*RADIUS - WIDTH + i;
+						final int posy = GAPY + 2*RADIUS - GAP2 - j;
 						g2d.setColor( pixelCols[i][j] );
 						g2d.drawOval(posx, posy, 1, 1);
 					}
@@ -609,19 +744,73 @@ public class GBCD_GBPB_PreviewFigure extends JPanel {
 			
 			
 			
-			//legend
-			//g2d.setStroke(new BasicStroke(1f)); //TODO ?
+		
+			//g2d.setStroke(new BasicStroke(1f)); 
 			
-			for(int i = 0; i < NLEVELS+1; i++) {
-								
-				g2d.setColor(colorLevels[i]);
+			ArrayList<Color> legCols = new ArrayList<Color>();
+			for(int i = 0; i < colorLevels.length; i++) legCols.add(colorLevels[i]);
+			
+			
+			int nRemovedTop = 0;
+			int nRemovedDown = 0;
+			
+			for(int i = 0; i < isoLevels.size(); i++) {
 				
-				int end = GAPY+RADIUS+170 - (int)( (double)(i)/(double)(NLEVELS+1)* 340 );
-				int start = GAPY+RADIUS+170- (int)( (double)(i+1)/(double)(NLEVELS+1)* 340);
-				if(i==NLEVELS) start = GAPY+RADIUS-170;
-			
-				g2d.fillRect(2*GAPX + 2*RADIUS+11, start, 30, end-start);
+				if(isoLevels.get(i) < (truemin-scmin)/(scmax-scmin)) {
+					isoLevels.remove(i);
+					legCols.remove(i);
+					i--;
+					nRemovedDown++;
+
+				} else if(isoLevels.get(i) > (truemax-scmin)/(scmax-scmin)) {
+					isoLevels.remove(i);
+					legCols.remove(i);
+					i--;
+					nRemovedTop++;
+				}
+					
+					
+				
 			}
+			
+			legCols.set(legCols.size()-1, colorLevels[NLEVELS - nRemovedTop]);
+			legCols.set(0, colorLevels[nRemovedDown]);
+			
+			for(int i = 0; i < isoLevels.size(); i++) {
+				
+				double val = isoLevels.get(i) * (scmax - scmin) + scmin;
+				isoLevels.set(i, (float) ((val - truemin) / ( truemax - truemin)));
+			}
+				
+			
+				
+				for(int i = 0; i < isoLevels.size()+1; i++) {
+					
+					g2d.setColor(legCols.get(i));
+					
+					int start;
+					int end;
+					
+					if(i == 0) {
+						
+						end = GAPY+RADIUS+170;
+						start = GAPY+RADIUS+170 - (int)( (double)isoLevels.get(i)* 340 );
+						
+					} else if (i == isoLevels.size()) {
+						
+						 start = GAPY+RADIUS-170;
+						 end = GAPY+RADIUS+170- (int)( (double)isoLevels.get(i-1)* 340);
+						
+					} else {
+						start = GAPY+RADIUS+170 - (int)( (double)isoLevels.get(i)* 340 );
+						end = GAPY+RADIUS+170- (int)( (double)isoLevels.get(i-1)* 340);
+					}
+				
+					g2d.fillRect(2*GAPX + 2*RADIUS+11, start, 30, end-start);
+				}			
+				
+				
+			
 				
 			final DecimalFormatSymbols otherSymbols = new DecimalFormatSymbols(Locale.US);
 			final DecimalFormat df;		
@@ -636,9 +825,8 @@ public class GBCD_GBPB_PreviewFigure extends JPanel {
 			
 		    g2d.setColor(Color.BLACK);
 		    
-		    String s1 = df.format(max);
-		    String s2 = df.format(min);
-		    System.out.println(min);
+		    String s1 = df.format(truemax);
+		    String s2 = df.format(truemin);
 		    g2d.drawString(s1, 2*GAPX + 2*RADIUS+26 - g2d.getFontMetrics().stringWidth(s1)/2,
 		    		GAPY+RADIUS-170 - (int)(0.66*g2d.getFontMetrics().getHeight() / 2));
 		    g2d.drawString(s2, 2*GAPX + 2*RADIUS+26 - g2d.getFontMetrics().stringWidth(s2)/2, 
@@ -656,13 +844,13 @@ public class GBCD_GBPB_PreviewFigure extends JPanel {
 		//axes
 		if(SSTonly) {
 			switch(ptGrp) {
-			case M3M: PaintUtilities.drawSSTCub(g2d, GAPX, GAPY, RADIUS, WIDTH);
+			case M3M: PaintUtilities.drawSSTCub(g2d, GAPX, GAPY, RADIUS, WIDTH, GAP2);
 				break;
-			case _6MMM: PaintUtilities.drawSSTHex(g2d, GAPX, GAPY, RADIUS, WIDTH); 
+			case _6MMM: PaintUtilities.drawSSTHex(g2d, GAPX, GAPY, RADIUS, WIDTH, GAP2); 
 				break;
-			case _4MMM: PaintUtilities.drawSSTTetr(g2d, GAPX, GAPY, RADIUS, WIDTH);
+			case _4MMM: PaintUtilities.drawSSTTetr(g2d, GAPX, GAPY, RADIUS, WIDTH, GAP2);
 				break;
-			case MMM: PaintUtilities.drawSSTOrth(g2d, GAPX, GAPY, RADIUS, WIDTH);
+			case MMM: PaintUtilities.drawSSTOrth(g2d, GAPX, GAPY, RADIUS, WIDTH, GAP2);
 				break;
 			}
 		}
@@ -734,8 +922,8 @@ public class GBCD_GBPB_PreviewFigure extends JPanel {
 			
 			
 			
-			//legend
-			//g2d.setStroke(new BasicStroke(1f)); //TODO ?
+		
+			//g2d.setStroke(new BasicStroke(1f)); 
 			
 			for(int i = 0; i < NLEVELS+1; i++) {
 								
@@ -758,8 +946,8 @@ public class GBCD_GBPB_PreviewFigure extends JPanel {
 			
 			vecg.setColor(Color.BLACK);
 		    
-		    String s1 = df.format(max);
-		    String s2 = df.format(min);
+		    String s1 = df.format(truemax);
+		    String s2 = df.format(truemin);
 		    vecg.drawString(s1, 2*GAPX + 2*RADIUS+26 - g2d.getFontMetrics().stringWidth(s1)/2,
 		    		GAPY+RADIUS-210 + g2d.getFontMetrics().getHeight() / 2);
 		    vecg.drawString(s2, 2*GAPX + 2*RADIUS+26 - g2d.getFontMetrics().stringWidth(s2)/2, 
@@ -777,13 +965,13 @@ public class GBCD_GBPB_PreviewFigure extends JPanel {
 		//axes
 		if(SSTonly) {
 			switch(ptGrp) {
-			case M3M: PaintUtilities.drawSSTCub(vecg, GAPX, GAPY, RADIUS, WIDTH);
+			case M3M: PaintUtilities.drawSSTCub(vecg, GAPX, GAPY, RADIUS, WIDTH, GAP2);
 				break;
-			case _6MMM: PaintUtilities.drawSSTHex(vecg, GAPX, GAPY, RADIUS, WIDTH); 
+			case _6MMM: PaintUtilities.drawSSTHex(vecg, GAPX, GAPY, RADIUS, WIDTH, GAP2); 
 				break;
-			case _4MMM: PaintUtilities.drawSSTTetr(vecg, GAPX, GAPY, RADIUS, WIDTH);
+			case _4MMM: PaintUtilities.drawSSTTetr(vecg, GAPX, GAPY, RADIUS, WIDTH, GAP2);
 				break;
-			case MMM: PaintUtilities.drawSSTOrth(vecg, GAPX, GAPY, RADIUS, WIDTH);
+			case MMM: PaintUtilities.drawSSTOrth(vecg, GAPX, GAPY, RADIUS, WIDTH, GAP2);
 				break;
 			}
 		}
