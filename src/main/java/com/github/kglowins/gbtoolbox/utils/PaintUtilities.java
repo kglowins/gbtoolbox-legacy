@@ -328,7 +328,7 @@ public class PaintUtilities {
 	
 	
 	public static final void drawSSTCub(final Graphics2D g,
-			  final int gapx, final int gapy, final int radius, int width) {
+			  final int gapx, final int gapy, final int radius, int width, int gap2) {
 
 		final int ISOSAMPLES = 32;
 
@@ -338,16 +338,16 @@ public class PaintUtilities {
 
 
 		Line2D axis1 = new Line2D.Double(gapx + (2*radius-width),
-				gapy + 2*radius - (2*radius-width)/2,
+				gapy + 2*radius - gap2,
 				
 				gapx + 2*radius,
-				gapy + 2*radius - (2*radius-width)/2);
+				gapy + 2*radius - gap2);
 		
 		Line2D axis2 = new Line2D.Double(gapx + (2*radius-width),
-				gapy + 2*radius - (2*radius-width)/2,
+				gapy + 2*radius - gap2,
 				
 				gapx + (2*radius-width) + 0.883663*width,
-				gapy + 2*radius - (2*radius-width)/2 -0.883663*width);	
+				gapy + 2*radius - gap2 -0.883663*width);	
 		
 		
 
@@ -368,14 +368,14 @@ public class PaintUtilities {
 					gapx + (2*radius-width) + 
 					(width/0.41421356d)*( (FastMath.tan(FastMath.atan(1d/FastMath.cos(t[i]))*0.5d)*FastMath.cos(t[i]))) ,
 					
-					gapy + 2*radius - (2*radius-width)/2 + 
+					gapy + 2*radius - gap2 + 
 					(width/0.41421356d)*( (FastMath.tan(FastMath.atan(1d/FastMath.cos(t[i]))*0.5d)*FastMath.sin(t[i]))) );
 		
 		drawACurve(g, pts);
 	}
 	
 	public static final void drawSSTHex(final Graphics2D g,
-			  final int gapx, final int gapy, final int radius, int width) {
+			  final int gapx, final int gapy, final int radius, int width, int gap2) {
 
 		
 
@@ -385,20 +385,20 @@ public class PaintUtilities {
 
 
 		Line2D axis1 = new Line2D.Double(gapx + (2*radius-width),
-				gapy + 2*radius - (2*radius-width)/2,
+				gapy + 2*radius - gap2,
 				
 				gapx + 2*radius,
-				gapy + 2*radius - (2*radius-width)/2);
+				gapy + 2*radius - gap2);
 		
 		Line2D axis2 = new Line2D.Double(gapx + (2*radius-width),
-				gapy + 2*radius - (2*radius-width)/2,
+				gapy + 2*radius - gap2,
 				
 				gapx + (2*radius-width) + FastMath.cos(FastMath.PI / 6d)*width,
-				gapy + 2*radius - (2*radius-width)/2 -FastMath.sin(FastMath.PI / 6d)*width);	
+				gapy + 2*radius - gap2 -FastMath.sin(FastMath.PI / 6d)*width);	
 		
 		
 		Arc2D arc = new Arc2D.Double(gapx + (2*radius-width) - width,
-				gapy + 2*radius - (2*radius-width)/2 - width,
+				gapy + 2*radius - gap2 - width,
 				2*width,
 				2*width,
 				0,
@@ -413,7 +413,7 @@ public class PaintUtilities {
 	
 	
 	public static final void drawSSTTetr(final Graphics2D g,
-			  final int gapx, final int gapy, final int radius, int width) {
+			  final int gapx, final int gapy, final int radius, int width, int gap2) {
 
 		
 
@@ -423,20 +423,20 @@ public class PaintUtilities {
 
 
 		Line2D axis1 = new Line2D.Double(gapx + (2*radius-width),
-				gapy + 2*radius - (2*radius-width)/2,
+				gapy + 2*radius - gap2,
 				
 				gapx + 2*radius,
-				gapy + 2*radius - (2*radius-width)/2);
+				gapy + 2*radius - gap2);
 		
 		Line2D axis2 = new Line2D.Double(gapx + (2*radius-width),
-				gapy + 2*radius - (2*radius-width)/2,
+				gapy + 2*radius - gap2,
 				
 				gapx + (2*radius-width) + FastMath.cos(FastMath.PI / 4d)*width,
-				gapy + 2*radius - (2*radius-width)/2 -FastMath.sin(FastMath.PI / 4d)*width);	
+				gapy + 2*radius - gap2 -FastMath.sin(FastMath.PI / 4d)*width);	
 		
 		
 		Arc2D arc = new Arc2D.Double(gapx + (2*radius-width) - width,
-				gapy + 2*radius - (2*radius-width)/2 - width,
+				gapy + 2*radius - gap2 - width,
 				2*width,
 				2*width,
 				0,
@@ -451,7 +451,7 @@ public class PaintUtilities {
 	
 	
 	public static final void drawSSTOrth(final Graphics2D g,
-			  final int gapx, final int gapy, final int radius, int width) {
+			  final int gapx, final int gapy, final int radius, int width, int gap2) {
 
 		
 
@@ -461,20 +461,20 @@ public class PaintUtilities {
 
 
 		Line2D axis1 = new Line2D.Double(gapx + (2*radius-width),
-				gapy + 2*radius - (2*radius-width)/2,
+				gapy + 2*radius - gap2,
 				
 				gapx + 2*radius,
-				gapy + 2*radius - (2*radius-width)/2);
+				gapy + 2*radius - gap2);
 		
 		Line2D axis2 = new Line2D.Double(gapx + (2*radius-width),
-				gapy + 2*radius - (2*radius-width)/2,
+				gapy + 2*radius - gap2,
 				
 				gapx + (2*radius-width),
-				gapy + 2*radius - (2*radius-width)/2 -width);	
+				gapy + 2*radius - gap2 -width);	
 		
 		
 		Arc2D arc = new Arc2D.Double(gapx + (2*radius-width) - width,
-				gapy + 2*radius - (2*radius-width)/2 - width,
+				gapy + 2*radius - gap2 - width,
 				2*width,
 				2*width,
 				0,
