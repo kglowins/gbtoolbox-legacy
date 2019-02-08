@@ -9,7 +9,9 @@ my colleagues.
 As a New Year's resolution and in order to make the code at least a little more maintainable,
 it was transformed to a Maven project early 2019.
 Thanks to that, you can now use ```mvn clean package``` to compile the sources,
-and you'll have the jar in the ```target``` subdirectory.
+and you'll have the jar in the ```target``` subdirectory. (Before the first 
+compilation you need to run ```mvn validate``` to install
+some dependencies in your local repository.)
 Then, ```java -jar target/gbtoolbox-1.0.1-SNAPSHOT.jar```
 is most likely the command that you want to run.
 
