@@ -29,8 +29,8 @@ public class AboutPanel extends JPanel {
 		
 		JLabel licLbl = new JLabel(
 				"<html>" +
-				"<b><i>GBToolbox</i></b> version 1.0(03/12/2015)<br>"+
-				"Copyright \u00a9 2011-2015, Krzysztof G\u0142owi\u0144ski. "+
+				"<b><i>GBToolbox</i></b> version 1.0.1 Beta (Dec 27, 2020)<br>"+
+				"Copyright \u00a9 2011-2020, Krzysztof G\u0142owi\u0144ski. "+
 				"All rights reserved.<br><br>" +
 				"<p align=justify>Redistribution and use in binary forms, without "+
 				"modification, is permitted provided that the following conditions are met: " +

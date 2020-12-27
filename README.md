@@ -15,12 +15,9 @@ some dependencies in your local repository.)
 Then, ```java -jar target/gbtoolbox-1.0.1-SNAPSHOT.jar```
 is most likely the command that you want to run.
 
-In my free time (which means rarely), I have been working
-on a new reincarnation of software for grain boundary analysis,
-so we may be lucky enough to see it one day :)
-
-I also took a piece of the new mystical code
-and attached it to this original one using a duct tape
+Also, the module for importing has been tweaked
 allowing for import of grain boundary data from 
 the latest version of DREAM.3D (6.5), 
 so *GBToolbox* is back in the game.
+
+Note: Module "Draw delected GBs" still does not support the latest DREAM.3D.
