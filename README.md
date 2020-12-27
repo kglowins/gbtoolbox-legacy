@@ -1,7 +1,7 @@
 The original *GBToolbox* was created within my
 [PhD project](http://www.imim.pl/personal/adam.morawiec/A_Morawiec_Web_Page/S/K_Glowinski/Dissertation.html)
 between 2011 and 2015.
-Since at that time the I was a novice in Java programming and I
+Since at that time I was a novice in Java programming and I
 didn't know software development processes nor best practices,
 the code is **really bad** in terms of style, duplications, etc.
 Still, it allowed for getting nice scientific results by me and
