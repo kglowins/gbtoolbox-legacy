@@ -1,7 +1,7 @@
-The original *GBToolbox* was created by Krzysztof Głowiński within his
+The original *GBToolbox* was created within my
 [PhD project](http://www.imim.pl/personal/adam.morawiec/A_Morawiec_Web_Page/S/K_Glowinski/Dissertation.html)
 between 2011 and 2015.
-Since at that time the author was a novice in Java programming and
+Since at that time the I was a novice in Java programming and I
 didn't know software development processes nor best practices,
 the code is **really bad** in terms of style, duplications, etc.
 Still, it allowed for getting nice scientific results by me and
@@ -21,3 +21,5 @@ the latest version of DREAM.3D (6.5),
 so *GBToolbox* is back in the game.
 
 Note: Module "Draw delected GBs" still does not support the latest DREAM.3D.
+
+Krzysztof Głowiński
