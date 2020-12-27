@@ -290,7 +290,7 @@ public class Dream3DToGbdatImporter extends SwingWorker<Void, Void> {
                 }
             }
             updateProgress("Saving Faces", ". Import completed", numberOfFaces - numberOfOmittedFaces, numberOfFaces - numberOfOmittedFaces);
-
+        wrt.close();
 
 
         if (importSettings.isSimplifyMesh()) {

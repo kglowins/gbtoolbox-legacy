@@ -75,7 +75,7 @@ public class SymmetryFigure extends JPanel  implements MouseMotionListener {
 		setOfAllC = Transformations.getSymmetryTransformations(ptGrp);
 		this.M = M;
 		
-		this.ptGrp = ptGrp;;
+		this.ptGrp = ptGrp;
 		
 		this.a = a;
 		this.b = b;
