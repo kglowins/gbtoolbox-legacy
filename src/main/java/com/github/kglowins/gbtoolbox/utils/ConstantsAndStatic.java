@@ -10,7 +10,7 @@ public class ConstantsAndStatic {
 	
 	public static final String MINBPOWERST = "\u215b";
 	
-	public static final String VERSION = "2014.08.22";
+	public static final String VERSION = "2021.01.07";
 	
 	public static final String GBTOOLBOX = "GBToolbox";
 	
