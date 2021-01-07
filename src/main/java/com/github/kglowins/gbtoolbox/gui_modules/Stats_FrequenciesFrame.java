@@ -1398,6 +1398,7 @@ public class Stats_FrequenciesFrame extends JFrame {
 
 			Iterator<GBDatHeader> iterator = gbFiles.iterator();
 			int nProcessed = 0;
+			int numberOfExceptions = 0;
 
 			while(iterator.hasNext() && !isCancelled()) {
 
@@ -1413,157 +1414,163 @@ public class Stats_FrequenciesFrame extends JFrame {
 
 					final String[] num = line.trim().split("\\s+");
 					nProcessed++;
-
-					boolean accepted = true;						
-
-					double weight = 0d;
-					double tiltDist = INFTY;
-					double twistDist = INFTY;
-					double symDist = INFTY;
-					double impropDist = INFTY;							
-					double tiltAngle = INFTY;
-					double twistAngle = INFTY;
-					
-					double minTtc = INFTY;
-					double maxTtc = INFTY;
-					double symTtc = INFTY;
-					double impropTtc = INFTY;
-
-					int pos = 8;
-
-					if(header.isExperimental()) {
-						pos++;
-						weight = Double.parseDouble(num[pos]);
-						pos++;						
-					}
-
-					if(header.containsTiltDist()) {
-						tiltDist = Double.parseDouble(num[pos]);
-						pos++;
-					}
-
-					if(header.containsTwistDist()) {
-						twistDist = Double.parseDouble(num[pos]);
-						pos++;
-					}
-
-					if(header.containsSymDist()) {
-						symDist = Double.parseDouble(num[pos]);
-						pos++;
-					}
-
-					if(header.containsImpropDist()) {										
-						impropDist = Double.parseDouble(num[pos]);
-						pos++;
-					}
-
-					if(header.containsTiltAngle()) {
-						tiltAngle = Double.parseDouble(num[pos]);
-						pos++;
-					}
-
-					if(header.containsTwistAngle()) {
-						twistAngle = Double.parseDouble(num[pos]);
-						pos++;
-					}
-					
-					if(header.containsMinTTC()) {
-						minTtc = Double.parseDouble(num[pos]);
-						pos++;
-					}
-					
-					if(header.containsMaxTTC()) {
-						maxTtc = Double.parseDouble(num[pos]);
-						pos++;
-					}
-
-					if(header.containsSymTTC()) {
-						symTtc = Double.parseDouble(num[pos]);
-						pos++;
-					}
-					
-					if(header.containsImpropTTC()) {
-						impropTtc = Double.parseDouble(num[pos]);
-						pos++;
-					}
-					
+					boolean accepted = true;
 					boolean tooBig = false;
-					
-					if(eliminate && weight > areaThr) {
-						tooBig = true;
-						accepted = false;
-					}
+					double weight = 0d;
 
-					if(tiltDistChB.isSelected())
-						if(tiltDist > tiltTol) accepted = false;
+					try {
 
-					if(twistDistChB.isSelected())
-						if(twistDist > twistTol) accepted = false;
+						double tiltDist = INFTY;
+						double twistDist = INFTY;
+						double symDist = INFTY;
+						double impropDist = INFTY;
+						double tiltAngle = INFTY;
+						double twistAngle = INFTY;
 
-					if(symDistChB.isSelected())
-						if(symDist > symTol) accepted = false;
+						double minTtc = INFTY;
+						double maxTtc = INFTY;
+						double symTtc = INFTY;
+						double impropTtc = INFTY;
 
-					if(impropDistChB.isSelected())
-						if(impropDist > impropTol) accepted = false;
+						int pos = 8;
 
-					if(tiltAngleChB.isSelected())
-						if(twistAngle > maxTwistAngle) accepted = false;
+						if (header.isExperimental()) {
+							pos++;
+							weight = Double.parseDouble(num[pos]);
+							pos++;
+						}
 
-					if(twistAngleChB.isSelected())
-						if(tiltAngle > maxTiltAngle) accepted = false;
-					
-					if(tiltTtcChB.isSelected())
-						if(maxTtc > maxTiltTtc) accepted = false;
-					
-					if(twistTtcChB.isSelected())
-						if(minTtc > maxTwistTtc) accepted = false;
+						if (header.containsTiltDist()) {
+							tiltDist = Double.parseDouble(num[pos]);
+							pos++;
+						}
 
-					if(symTtcChB.isSelected())
-						if(symTtc > maxSymTtc) accepted = false;
-					
-					if(impropTtcChB.isSelected())
-						if(impropTtc > maxImpropTtc) accepted = false;
+						if (header.containsTwistDist()) {
+							twistDist = Double.parseDouble(num[pos]);
+							pos++;
+						}
 
-					if(accepted && cslChB.isSelected()) {
+						if (header.containsSymDist()) {
+							symDist = Double.parseDouble(num[pos]);
+							pos++;
+						}
 
-						final double phi1L = Math.toRadians(Double.parseDouble(num[0]));
-						final double PhiL = Math.toRadians(Double.parseDouble(num[1]));
-						final double phi2L = Math.toRadians(Double.parseDouble(num[2]));
-						
-						final double phi1R = Math.toRadians(Double.parseDouble(num[3]));
-						final double PhiR = Math.toRadians(Double.parseDouble(num[4]));
-						final double phi2R = Math.toRadians(Double.parseDouble(num[5]));
+						if (header.containsImpropDist()) {
+							impropDist = Double.parseDouble(num[pos]);
+							pos++;
+						}
 
-						final double znth = Math.toRadians(Double.parseDouble(num[6]));
-						final double azmth = Math.toRadians(Double.parseDouble(num[7]));
+						if (header.containsTiltAngle()) {
+							tiltAngle = Double.parseDouble(num[pos]);
+							pos++;
+						}
 
-						final EulerAngles eulL = new EulerAngles();
-						eulL.set(phi1L, PhiL, phi2L);
-						
-						final EulerAngles eulR = new EulerAngles();
-						eulR.set(phi1R, PhiR, phi2R);
+						if (header.containsTwistAngle()) {
+							twistAngle = Double.parseDouble(num[pos]);
+							pos++;
+						}
 
-						final Matrix3x3 ML = new Matrix3x3();
-						ML.set(eulL);
-						
-						final Matrix3x3 MR = new Matrix3x3();
-						MR.set(eulR);
-						
-						final Matrix3x3 M = new Matrix3x3(ML);
-						M.timesTransposed(MR);
+						if (header.containsMinTTC()) {
+							minTtc = Double.parseDouble(num[pos]);
+							pos++;
+						}
 
-						final UnitVector m1 = new UnitVector();
-						m1.set(znth, azmth);
-						m1.transform(ML);
+						if (header.containsMaxTTC()) {
+							maxTtc = Double.parseDouble(num[pos]);
+							pos++;
+						}
 
-						final InterfaceMatrix B = new InterfaceMatrix(M, m1);
+						if (header.containsSymTTC()) {
+							symTtc = Double.parseDouble(num[pos]);
+							pos++;
+						}
 
-						tester.test(B);
+						if (header.containsImpropTTC()) {
+							impropTtc = Double.parseDouble(num[pos]);
+							pos++;
+						}
 
-						if(tester.getMinSigma() == 0) accepted = false;
+						if (eliminate && weight > areaThr) {
+							tooBig = true;
+							accepted = false;
+						}
 
-						if(onlySigmaRb.isSelected()) if(tester.getMinSigma() != sigmaChosen) accepted = false; 
+						if (tiltDistChB.isSelected())
+							if (tiltDist > tiltTol) accepted = false;
 
+						if (twistDistChB.isSelected())
+							if (twistDist > twistTol) accepted = false;
+
+						if (symDistChB.isSelected())
+							if (symDist > symTol) accepted = false;
+
+						if (impropDistChB.isSelected())
+							if (impropDist > impropTol) accepted = false;
+
+						if (tiltAngleChB.isSelected())
+							if (twistAngle > maxTwistAngle) accepted = false;
+
+						if (twistAngleChB.isSelected())
+							if (tiltAngle > maxTiltAngle) accepted = false;
+
+						if (tiltTtcChB.isSelected())
+							if (maxTtc > maxTiltTtc) accepted = false;
+
+						if (twistTtcChB.isSelected())
+							if (minTtc > maxTwistTtc) accepted = false;
+
+						if (symTtcChB.isSelected())
+							if (symTtc > maxSymTtc) accepted = false;
+
+						if (impropTtcChB.isSelected())
+							if (impropTtc > maxImpropTtc) accepted = false;
+
+						if (accepted && cslChB.isSelected()) {
+
+							final double phi1L = Math.toRadians(Double.parseDouble(num[0]));
+							final double PhiL = Math.toRadians(Double.parseDouble(num[1]));
+							final double phi2L = Math.toRadians(Double.parseDouble(num[2]));
+
+							final double phi1R = Math.toRadians(Double.parseDouble(num[3]));
+							final double PhiR = Math.toRadians(Double.parseDouble(num[4]));
+							final double phi2R = Math.toRadians(Double.parseDouble(num[5]));
+
+							final double znth = Math.toRadians(Double.parseDouble(num[6]));
+							final double azmth = Math.toRadians(Double.parseDouble(num[7]));
+
+							final EulerAngles eulL = new EulerAngles();
+							eulL.set(phi1L, PhiL, phi2L);
+
+							final EulerAngles eulR = new EulerAngles();
+							eulR.set(phi1R, PhiR, phi2R);
+
+							final Matrix3x3 ML = new Matrix3x3();
+							ML.set(eulL);
+
+							final Matrix3x3 MR = new Matrix3x3();
+							MR.set(eulR);
+
+							final Matrix3x3 M = new Matrix3x3(ML);
+							M.timesTransposed(MR);
+
+							final UnitVector m1 = new UnitVector();
+							m1.set(znth, azmth);
+							m1.transform(ML);
+
+							final InterfaceMatrix B = new InterfaceMatrix(M, m1);
+
+							tester.test(B);
+
+							if (tester.getMinSigma() == 0) accepted = false;
+
+							if (onlySigmaRb.isSelected()) if (tester.getMinSigma() != sigmaChosen) accepted = false;
+
+						}
+					} catch (NumberFormatException e) {
+						System.err.println(e);
+						System.err.println("on line: " + line);
+						System.err.println("line number: " + nProcessed);
+						System.err.println("number of exceptions: " + (++numberOfExceptions));
 					}
 
 					setProgress(Math.min((int)Math.round((double)nProcessed/(double)nTotal*100d), 100));				
