@@ -27,6 +27,7 @@ public class GBCD_DistFunOptsPanel extends JPanel {
 	
 	private static final String USE37 = "<html>Use \u03C1<sub>m</sub> = 3\u00b0 and \u03C1<sub>p</sub> = 7\u00b0";
 	private static final String USE55 = "<html>Use \u03C1<sub>m</sub> = 5\u00b0 and \u03C1<sub>p</sub> = 5\u00b0";
+	private static final String USE57 = "<html>Use \u03C1<sub>m</sub> = 5\u00b0 and \u03C1<sub>p</sub> = 7\u00b0";
 	private static final String USE58 = "<html>Use \u03C1<sub>m</sub> = 5\u00b0 and \u03C1<sub>p</sub> = 8\u00b0";
 	
 	private static final String RHOUSER = "<html>Use user-specified limiting distances \u03C1<sub>m</sub> and \u03C1<sub>p</sub>";
@@ -39,7 +40,7 @@ public class GBCD_DistFunOptsPanel extends JPanel {
 		setLayout(new MigLayout("insets 0", "[grow]", "[][][][][]"));
 		
 		rhoCb = new JComboBox();
-		rhoCb.setModel(new DefaultComboBoxModel(new String[] {USE37, USE55, USE58, RHOUSER}));
+		rhoCb.setModel(new DefaultComboBoxModel(new String[] {USE37, USE55, USE57, USE58, RHOUSER}));
 		add(rhoCb, "cell 0 0");
 		
 		rhoCb.addActionListener(new ActionListener() {
@@ -67,6 +68,14 @@ public class GBCD_DistFunOptsPanel extends JPanel {
             		misTolFld.setEditable(false);
             		normalize = true;
             		break;
+
+            		case USE57:
+						planeTolFld.setText("7");
+						misTolFld.setText("5");
+						planeTolFld.setEditable(false);
+						misTolFld.setEditable(false);
+						normalize = true;
+						break;
             		
             	case USE58: 
             		planeTolFld.setText("8");

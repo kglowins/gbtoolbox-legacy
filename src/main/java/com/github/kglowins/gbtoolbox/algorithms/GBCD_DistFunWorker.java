@@ -317,7 +317,10 @@ public final class GBCD_DistFunWorker extends SwingWorker<Void,Void> {
 	    
 	    	} else if(Math.abs(Math.toDegrees(planeTol) - 5d) < 1e-5 && Math.abs(Math.toDegrees(misTol) - 5d) < 1e-5) {
 	    		ballVolume = 0.000139d;
-	    		
+
+			} else if(Math.abs(Math.toDegrees(planeTol) - 7d) < 1e-5 && Math.abs(Math.toDegrees(misTol) - 5d) < 1e-5) {
+				ballVolume = 0.000287439d;
+
 	    	} else if(Math.abs(Math.toDegrees(planeTol) - 8d) < 1e-5 && Math.abs(Math.toDegrees(misTol) - 5d) < 1e-5) {
 	    		ballVolume = 0.00038019d;
 	    	}
