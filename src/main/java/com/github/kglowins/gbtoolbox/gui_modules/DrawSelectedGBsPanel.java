@@ -3,11 +3,8 @@ package com.github.kglowins.gbtoolbox.gui_modules;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.BufferedInputStream;
 import java.io.BufferedWriter;
-import java.io.DataInputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -15,7 +12,7 @@ import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
 import java.util.Locale;
-import java.util.Scanner;
+import java.util.stream.IntStream;
 import javax.swing.DefaultListModel;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
@@ -74,15 +71,9 @@ public class DrawSelectedGBsPanel extends JPanel implements ListSelectionListene
 	private Dialog_GBPlusLimitsForDraw dialog;
 
 	private ArrayList<GBPlusLimits> gbs = new ArrayList<GBPlusLimits>();
-	private JLabel nodeLbl;
-	private JLabel triLbl;
 	private JLabel voxelLbl;
 	private JLabel lblCurrentlyWorks;
-	private JTextField nodesFld;
-	private JTextField triFld;
 	private JTextField voxelFld;
-	private JButton nodesBtn;
-	private JButton triBtn;
 	private JButton voxelBtn;
 	private JLabel statusLbl;
 	
@@ -143,75 +134,11 @@ public class DrawSelectedGBsPanel extends JPanel implements ListSelectionListene
 	
 
 		setLayout(new MigLayout("", "[][][][]", "[][][][][][][][][][][][][][]"));
-		
-		nodeLbl = new JLabel("<html><u>Nodes data file</u> <font color=#0000cc><sup>(1)</sup></font>:");
-		add(nodeLbl, "cell 0 1");
-		
-		nodesFld = new JTextField();
-		nodesFld.setColumns(24);
-		add(nodesFld, "flowx,cell 1 1,alignx right");
-		
+
 		
 		final JFileChooser fc = new JFileChooser();
 		fc.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
-		
-		nodesBtn = new JButton();
-		nodesBtn.setIcon(new ImageIcon(DrawSelectedGBsPanel.class.getResource("/gui_bricks/folder.png")));
-		nodesBtn.setPreferredSize(new Dimension(24, 24));
-		nodesBtn.setMinimumSize(new Dimension(24, 24));
-		nodesBtn.setMaximumSize(new Dimension(24, 24));
-		add(nodesBtn, "cell 2 1");
-		
-			
-		
-				nodesBtn.addActionListener(new ActionListener() {
-					@Override
-					public void actionPerformed(ActionEvent evt) {
-		
-						fc.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
-						//	fc.setAcceptAllFileFilterUsed(false);
-						//	fc.addChoosableFileFilter(binFilter);
-		
-						int returnVal = fc.showDialog(DrawSelectedGBsPanel.this, "Import");
-						if(returnVal == JFileChooser.APPROVE_OPTION) {
-							nodesFld.setText(fc.getSelectedFile().getAbsolutePath());
-						}	
-						//	fc.removeChoosableFileFilter(binFilter);
-						//	fc.setAcceptAllFileFilterUsed(true);
-					}
-				});
-		
-		triLbl = new JLabel("<html><u>Triangles data file</u> <font color=#0000cc><sup>(1)</sup></font>:");
-		add(triLbl, "cell 0 2");
-		
-		triFld = new JTextField();
-		triFld.setColumns(24);
-		add(triFld, "flowx,cell 1 2,alignx right");
-		
-		triBtn = new JButton();
-		triBtn.setIcon(new ImageIcon(DrawSelectedGBsPanel.class.getResource("/gui_bricks/folder.png")));
-		triBtn.setPreferredSize(new Dimension(24, 24));
-		triBtn.setMinimumSize(new Dimension(24, 24));
-		triBtn.setMaximumSize(new Dimension(24, 24));
-		add(triBtn, "cell 2 2");
-		
-				triBtn.addActionListener(new ActionListener() {
-					@Override
-					public void actionPerformed(ActionEvent evt) {
-		
-						fc.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
-						//	fc.setAcceptAllFileFilterUsed(false);
-						//	fc.addChoosableFileFilter(binFilter);
-		
-						int returnVal = fc.showDialog(DrawSelectedGBsPanel.this, "Import");
-						if(returnVal == JFileChooser.APPROVE_OPTION) {
-							triFld.setText(fc.getSelectedFile().getAbsolutePath());
-						}	
-						//	fc.removeChoosableFileFilter(binFilter);
-						//	fc.setAcceptAllFileFilterUsed(true);
-					}
-				});
-		
+
 		voxelLbl = new JLabel("<html><u>DREAM.3D data file (after clean-up)</u> <font color=#0000cc><sup>(2)</sup></font>:");
 		add(voxelLbl, "cell 0 3");
 		
@@ -437,27 +364,6 @@ public class DrawSelectedGBsPanel extends JPanel implements ListSelectionListene
 
 				File fTmp;
 
-				fTmp = new File(nodesFld.getText());
-				if(!fTmp.exists()) {
-
-					JOptionPane.showMessageDialog(null,
-							"Nodes data file does not exist.",
-							"Error",
-							JOptionPane.ERROR_MESSAGE);
-					return;					
-				}
-
-				fTmp = new File(triFld.getText());
-				if(!fTmp.exists()) {
-
-					JOptionPane.showMessageDialog(null,
-							"Triangles data file does not exist.",
-							"Error",
-							JOptionPane.ERROR_MESSAGE);
-					return;					
-				}
-
-
 				fTmp = new File(voxelFld.getText());
 				if(!fTmp.exists()) {
 
@@ -468,16 +374,13 @@ public class DrawSelectedGBsPanel extends JPanel implements ListSelectionListene
 					return;					
 				}
 
-							
 				System.out.println("GB types " + gbs.size());
 				fireBtn.setEnabled(false);
 				abortBtn.setEnabled(true);
 				
 				task = new Importer();
 				task.execute();
-	
 			}
-
 		});
 
 		abortBtn = new JButton();
@@ -522,126 +425,25 @@ public class DrawSelectedGBsPanel extends JPanel implements ListSelectionListene
 
 		@Override
 		public Void doInBackground() {
-								
+
 			statusLbl.setText("Import started");
-		
-			// READ NODES
-			float[] nodeX = null;
-			float[] nodeY = null;
-			float[] nodeZ = null;
-			int[] types = null;
 
-			try {
-				final DataInputStream in = new DataInputStream(new BufferedInputStream(new FileInputStream(nodesFld.getText())));
-				final Scanner sc = new Scanner(in);
-				sc.useLocale(Locale.US);
-				final int nNodes = sc.nextInt();
-
-				statusLbl.setText("Import in progress - Reading " + nNodes + " nodes...");
-
-				nodeX = new float[nNodes];
-				nodeY = new float[nNodes];
-				nodeZ = new float[nNodes];
-				types = new int[nNodes];
-
-				for(int i = 0; i < nNodes; i++) {
-					
-					if(isCancelled()) {
-						in.close();
-						return null;
-					}
-
-					final int id = sc.nextInt();						
-					final int type = sc.nextInt(); 
-					final float x = sc.nextFloat();
-					final float y = sc.nextFloat();
-					final float z = sc.nextFloat();
-
-
-					nodeX[id] = x;
-					nodeY[id] = y;
-					nodeZ[id] = z;
-					
-					types[id] = type;
-				}
-				in.close();
-
-				statusLbl.setText("Reading nodes completed");
-				
-			} catch (IOException e) {
-				
-				statusLbl.setText("Reading nodes failed");
-				JOptionPane.showMessageDialog(null,
-						"An I/O error occured.",
-						"Reading nodes file failed.",
-						JOptionPane.ERROR_MESSAGE);
-				return null;
-			}
-
-
-			// READ TRIANGLES
-			int[] tNode1 = null;
-			int[] tNode2 = null;
-			int[] tNode3 = null;
-			int[] spin1 = null;
-			int[] spin2 = null;		
-
-			try {
-				final DataInputStream in = new DataInputStream(new BufferedInputStream(new FileInputStream(triFld.getText())));
-
-				final Scanner sc = new Scanner(in);
-				sc.useLocale(Locale.US);
-				final int nTriangles = sc.nextInt();
-
-				statusLbl.setText("Import in progrss - Reading " + nTriangles + " triangles...");					
-
-				tNode1 = new int[nTriangles];
-				tNode2 = new int[nTriangles];
-				tNode3 = new int[nTriangles];
-				spin1 = new int[nTriangles];
-				spin2 = new int[nTriangles];
-
-				for(int i = 0; i < nTriangles; i++) {
-					
-					if(isCancelled()) {
-						in.close();
-						return null;
-					}
-
-					final int id = sc.nextInt();						
-					final int nod1 = sc.nextInt();
-					final int nod2 = sc.nextInt();
-					final int nod3 = sc.nextInt();
-
-					sc.nextInt(); sc.nextInt(); sc.nextInt(); // skip edges
-
-					final int sp1 = sc.nextInt();
-					final int sp2 = sc.nextInt();
-
-					tNode1[id] = nod1;
-					tNode2[id] = nod2;
-					tNode3[id] = nod3;
-					spin1[id] = sp1;
-					spin2[id] = sp2;
-				}
-				in.close();					
-				statusLbl.setText("Reading triangles completed");
-
-			} catch (IOException e) {
-				
-				statusLbl.setText("Reading triangles failed");
-				JOptionPane.showMessageDialog(null,
-						"An I/O error occured.",
-						"Reading triangles file failed.",
-						JOptionPane.ERROR_MESSAGE);
-				return null;
-			}
-			
 			int[] hdf_cryststruct;
 			int[] hdf_phases;
 			int usedPhase;
 			EulerAngles[] eul;
-			
+
+			int[] tNode1;
+			int[] tNode2;
+			int[] tNode3;
+			int[] spin1;
+			int[] spin2;
+			float[] nodeX;
+			float[] nodeY;
+			float[] nodeZ;
+			byte[] types;
+
+
 			// READ VOXELS
 			try {
 
@@ -665,21 +467,21 @@ public class DrawSelectedGBsPanel extends JPanel implements ListSelectionListene
 				testFile.open();
 
 				// phase data
-				Dataset dataset = (Dataset)testFile.get("VoxelDataContainer/ENSEMBLE_DATA/CrystalStructures");		        
+				Dataset dataset = (Dataset)testFile.get("DataContainers/DataContainer/Phase Data/CrystalStructures");
 				hdf_cryststruct = (int[])dataset.read();
 
 				// grain data					
-				dataset = (Dataset)testFile.get("VoxelDataContainer/FIELD_DATA/Phases");		        
+				dataset = (Dataset)testFile.get("DataContainers/DataContainer/Grain Data/Phases");
 				hdf_phases = (int[])dataset.read();
 				
-				dataset = (Dataset)testFile.get("VoxelDataContainer/FIELD_DATA/SurfaceFields");		        
+				dataset = (Dataset)testFile.get("DataContainers/DataContainer/Grain Data/SurfaceFeatures");
 				surfGrains = (byte[])dataset.read();
 				
 				int countSurf = 0;
 				for(byte b : surfGrains) if(b==1) countSurf++;
 				System.out.println("There were " + countSurf + " surface grains.");
 
-				dataset = (Dataset)testFile.get("VoxelDataContainer/FIELD_DATA/EulerAngles");		        
+				dataset = (Dataset)testFile.get("DataContainers/DataContainer/Grain Data/AvgEulerAngles");
 				hdf_euler = (float[])dataset.read();
 
 
@@ -697,6 +499,55 @@ public class DrawSelectedGBsPanel extends JPanel implements ListSelectionListene
 					final int threeI = 3 * i;
 					eul[i].set(hdf_euler[threeI], hdf_euler[threeI+1], hdf_euler[threeI+2] );
 				}
+
+
+
+				// READ NODES
+				dataset = (Dataset)testFile.get("DataContainers/TriangleDataContainer/_SIMPL_GEOMETRY/SharedVertexList");
+
+				float[] rawNodeCoordinates = (float[]) dataset.read();
+				nodeX = new float[rawNodeCoordinates.length / 3];
+				nodeY = new float[rawNodeCoordinates.length / 3];
+				nodeZ = new float[rawNodeCoordinates.length / 3];
+
+				IntStream.range(0, rawNodeCoordinates.length / 3).forEach(nodeId -> {
+					int idTimes3 = 3 * nodeId;
+					nodeX[nodeId] = rawNodeCoordinates[idTimes3];
+					nodeY[nodeId] = rawNodeCoordinates[idTimes3 + 1];
+					nodeZ[nodeId] = rawNodeCoordinates[idTimes3 + 2];
+				});
+
+				dataset = (Dataset)testFile.get("DataContainers/TriangleDataContainer/VertexData/NodeType");
+				types = (byte[])dataset.read();
+
+
+				// READ TRIANGLES
+				dataset = (Dataset)testFile.get("DataContainers/TriangleDataContainer/_SIMPL_GEOMETRY/SharedTriList");
+
+				long[] rawTriList = (long[]) dataset.read();
+				tNode1 = new int[rawTriList.length / 3];
+				tNode2 = new int[rawTriList.length / 3];
+				tNode3 = new int[rawTriList.length / 3];
+
+				IntStream.range(0, rawTriList.length / 3).forEach(triId -> {
+					int idTimes3 = 3 * triId;
+					tNode1[triId] = Long.valueOf(rawTriList[idTimes3]).intValue();
+					tNode2[triId] = Long.valueOf(rawTriList[idTimes3 + 1]).intValue();
+					tNode3[triId] = Long.valueOf(rawTriList[idTimes3 + 2]).intValue();
+				});
+
+
+				dataset = (Dataset)testFile.get("DataContainers/TriangleDataContainer/FaceData/FaceLabels");
+				int[] rawSpins = (int[]) dataset.read();
+				spin1 = new int[rawSpins.length / 2];
+				spin2 = new int[rawSpins.length / 2];
+
+				IntStream.range(0, rawSpins.length / 2).forEach(spinId -> {
+					int idTimes2 = 2 * spinId;
+					spin1[spinId] = rawSpins[idTimes2];
+					spin2[spinId] = rawSpins[idTimes2 + 1];
+				});
+
 
 				// choose the phase
 				statusLbl.setText("Import in progess: select phase");
@@ -750,9 +601,7 @@ public class DrawSelectedGBsPanel extends JPanel implements ListSelectionListene
 						"DREAM.3D data file import failed",
 						JOptionPane.ERROR_MESSAGE);
 				return null;
-			}	
-				
-				
+			}
 				
 			// write tris to VTK
 			
@@ -934,9 +783,6 @@ public class DrawSelectedGBsPanel extends JPanel implements ListSelectionListene
 									if(flags[k] == false) {
 										continue;
 									} else {
-																
-									//	System.out.println(spin1[i] + " " + spin2[i]);
-										
 										vtkTrisN1.add(tNode1[i]);
 										vtkTrisN2.add(tNode2[i]);
 										vtkTrisN3.add(tNode3[i]);
@@ -951,7 +797,7 @@ public class DrawSelectedGBsPanel extends JPanel implements ListSelectionListene
 							
 							
 						}  catch(IllegalArgumentException e) {
-							
+
 							skippedTriangles++;
 							continue;
 						}
