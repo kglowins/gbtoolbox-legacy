@@ -424,7 +424,7 @@ public class StatisticalAnalysisPanel extends JPanel {
 		add(secondGrainBtn, "cell 0 14 3 1");
 		
 		misorAxisLbl = new JLabel("<html><u>Distribution of misorientation axes</u>:");
-		//add(misorAxisLbl, "cell 0 8 3 1,gapx 40");
+		add(misorAxisLbl, "cell 0 8 3 1,gapx 40");
 		
 		misorAxisBtn = new JButton();
 		misorAxisBtn.setIcon(new ImageIcon(StatisticalAnalysisPanel.class.getResource("/gui_bricks/pie_chart.png")));
@@ -432,7 +432,7 @@ public class StatisticalAnalysisPanel extends JPanel {
 		misorAxisBtn.setMinimumSize(new Dimension(24, 24));
 		misorAxisBtn.setMaximumSize(new Dimension(24, 24));
 		misorAxisBtn.setEnabled(false);
-	//	add(misorAxisBtn, "cell 0 8");
+		add(misorAxisBtn, "cell 0 8");
 		
 		misorAxisBtn.addActionListener(new ActionListener() { 
 			

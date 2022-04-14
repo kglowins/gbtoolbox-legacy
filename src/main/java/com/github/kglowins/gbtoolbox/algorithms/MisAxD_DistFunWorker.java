@@ -169,8 +169,11 @@ public final class MisAxD_DistFunWorker extends SwingWorker<Void,Void> {
 					
 				//	final InterfaceMatrix readB = new InterfaceMatrix(M, m1);
 					
-								
+
 					Mlist.add(M.getDisorientation(ptGrp));
+
+				//	Mlist.add(M);
+
 					Area.add(A);
 					
 					if(isExp) {
@@ -220,10 +223,9 @@ public final class MisAxD_DistFunWorker extends SwingWorker<Void,Void> {
 	    // calculate the distribution
 		final ArrayList<UnitVector> asymPts = new ArrayList<UnitVector>();    	    
 	    for(UnitVector p : allPts) {
-	    	
-	    	asymPts.add(p);	
-	    	 
-	 /*   	switch(ptGrp) {
+			//if(p.z() >= -1.501d * planeTol) asymPts.add(p);
+
+	    	switch(ptGrp) {
 	    	case M3M:
 	    		if( p.z() >= 0d && p.y() >= p.z() && p.x() >= p.y()) asymPts.add(p);	    
 	    		break;
@@ -242,12 +244,12 @@ public final class MisAxD_DistFunWorker extends SwingWorker<Void,Void> {
 	    		break;
 	    		
 	    		default: break;
-	    	}*/   	
+	    	}
 	    }
 	    
 	    switch(ptGrp) {
     	case M3M:
-    /*		UnitVector border = new UnitVector();
+    		UnitVector border = new UnitVector();
     		border.set(1, 0, 0);
     		asymPts.add(border);
     		
@@ -258,7 +260,7 @@ public final class MisAxD_DistFunWorker extends SwingWorker<Void,Void> {
     		border = new UnitVector();
     		border.set(1, 1, 1);
     		asymPts.add(border);
-    	*/	
+
     		break;
     		
     	case _6MMM:    		
@@ -273,7 +275,7 @@ public final class MisAxD_DistFunWorker extends SwingWorker<Void,Void> {
     		default: break;
     	}   	
 	    
-	    
+
 	    System.out.println("all: " + allPts.size() + "   asym: " + asymPts.size());        
 	        
 	    double[] distVals = new double[asymPts.size()];
@@ -282,43 +284,44 @@ public final class MisAxD_DistFunWorker extends SwingWorker<Void,Void> {
 
 	    
 	    final Matrix3x3[] setC = Transformations.getSymmetryTransformations(ptGrp);	    	    
-		//final boolean[] TF = new boolean[]{false, true};
+		final boolean[] TF = new boolean[]{false, true};
 		  	    			
 		
     	for(int i = 0; i < Mlist.size(); ++i) {
-    		
-        	//for(Matrix3x3 C1 : setC) {  
-        		
-        	//	for(boolean transpose : TF) {
 
-        					
-        			final Matrix3x3 M = new Matrix3x3(Mlist.get(i));
-        		//	if(transpose) M.transpose();
-        			
-        		//	M.leftMul(C1);
-        			
-        			
-        			final AxisAngle AA = new AxisAngle();
-        			AA.set(M);
-        			
-        			final UnitVector U = new UnitVector(AA.axis());
-        			
-        			
-        			
-        			//if(U.z() < 0d) U.negate();
-        			       				
-        					
-        			for(int j = 0; j < asymPts.size(); j++) {
-	    				
-        				final double gamma = MyMath.acos(asymPts.get(j).dot(U));
-	       											
-        				if(gamma <= planeTol) distVals[j] += Area.get(i);
-	       	    	}
-        			
-        			
-        	//	}
-    	//	}
-        	
+	//		for (Matrix3x3 C1 : setC) {
+			//	for (Matrix3x3 C2 : setC) {
+
+				//	for (boolean transpose : TF) {
+
+
+						final Matrix3x3 M = new Matrix3x3(Mlist.get(i));
+					//	if (transpose) M.transpose();
+
+
+					//	M.leftMul(C1);
+			//			M.timesTransposed(C2);
+
+						final AxisAngle AA = new AxisAngle();
+						AA.set(M);
+
+						final UnitVector U = new UnitVector(AA.axis());
+
+
+						//if(U.z() < 0d) U.negate();
+
+
+						for (int j = 0; j < asymPts.size(); j++) {
+
+							final double gamma = MyMath.acos(asymPts.get(j).dot(U));
+
+							if (gamma <= planeTol) distVals[j] += Area.get(i);
+						}
+
+				//	}
+			//	}
+		//	}
+
         	
         	
         	
@@ -384,8 +387,8 @@ public final class MisAxD_DistFunWorker extends SwingWorker<Void,Void> {
 				   if(resPt.z() > -1.501d * planeTol) plusAndMinus = true;
 				   resPt.negate();
 			   }
-			   
-		   		 
+
+
 			   double rStereo = FastMath.tan(0.5d * resPt.zenith());
 			   double xStereo = rStereo * FastMath.cos(resPt.azimuth());
 			   double yStereo = rStereo * FastMath.sin(resPt.azimuth());
@@ -416,7 +419,7 @@ public final class MisAxD_DistFunWorker extends SwingWorker<Void,Void> {
 					   			df4.format(Math.toDegrees(resPt.zenith())) + ' ' + df4.format(Math.toDegrees(resPt.azimuth())) + ' ' +
 					   			df8.format(Math.sqrt( distVals[i] / totalNmeas / totalArea)));*/
 			  }
-			 
+
 
 			  
 		   }
