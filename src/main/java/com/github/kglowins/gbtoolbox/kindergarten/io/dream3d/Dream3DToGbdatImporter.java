@@ -75,13 +75,13 @@ public class Dream3DToGbdatImporter extends SwingWorker<Void, Void> {
         this.dataSetPaths = dataSetPaths;
 
         phaseCrystalStructures = stream((long[][]) dream3DFile.readDataSet(dataSetPaths.getPhaseCrystalStructures()))
-                .flatMapToLong(Arrays::stream)
-                .toArray();
+            .flatMapToLong(Arrays::stream)
+            .toArray();
 
         numberOfPhases = phaseCrystalStructures.length;
         grainPhases = stream((int[][]) dream3DFile.readDataSet(dataSetPaths.getGrainPhases()))
-                .flatMapToInt(Arrays::stream)
-                .toArray();
+            .flatMapToInt(Arrays::stream)
+            .toArray();
 
         numberOfGrains = grainPhases.length;
         numberOfGrainsPerPhase = getNumberOfGrainsPerPhase(numberOfPhases, numberOfGrains, grainPhases);
@@ -108,18 +108,17 @@ public class Dream3DToGbdatImporter extends SwingWorker<Void, Void> {
         firePropertyChange(STATUS_MESSAGE_PROPERTY, "", "Reading Dream.3D File");
         try {
 
-
             int[] surfaceGrains = stream((int[][]) dream3DFile.readDataSet(dataSetPaths.getSurfaceGrains()))
-                    .flatMapToInt(Arrays::stream)
-                    .toArray();
+                .flatMapToInt(Arrays::stream)
+                .toArray();
 
             numberOfSurfaceGrains = getNumberOfSurfaceGrains(surfaceGrains);
 
             EulerAngles[] grainEulerAngles = readGrainEulerAngles(dataSetPaths.getGrainEulerAngles(), numberOfGrains);
 
             double[] faceAreas = stream((double[][]) dream3DFile.readDataSet(dataSetPaths.getFaceAreas()))
-                    .flatMapToDouble(Arrays::stream)
-                    .toArray();
+                .flatMapToDouble(Arrays::stream)
+                .toArray();
 
             int numberOfFaces = faceAreas.length;
 
@@ -136,7 +135,7 @@ public class Dream3DToGbdatImporter extends SwingWorker<Void, Void> {
             List<LongTriple> nodesPerFace = readNodesPerFace(dataSetPaths.getFaceNodes(), numberOfFaces);
 
             Map<IntPair, Set<Integer>> grainIdsFaceIds = groupFacesByGrainIds(numberOfFaces, faceGrainIds,
-                    importSettings, nodeTypes, nodesPerFace, surfaceGrains);
+                importSettings, nodeTypes, nodesPerFace, surfaceGrains);
 
             // log.info("Grouping faces by grain ids took: {} millis.", currentTimeMillis() - startTime);
             log.info("Number of boundaries: {}", grainIdsFaceIds.size());
@@ -153,37 +152,39 @@ public class Dream3DToGbdatImporter extends SwingWorker<Void, Void> {
             //for simplification
             nodeCoordinates = readNodeCoordinates(dataSetPaths.getNodeCoordinates());
 
+            List<DoubleTriple> vtkVertices = new ArrayList<>();
+            List<Triple<Integer, Integer, Integer>> vtkTriangleVertices = new ArrayList<>();
+            List<IntPair> vtkGrainIds = new ArrayList<>();
+            List<Integer> vtkBoundaryIds = new ArrayList<>();
 
-        List<DoubleTriple> vtkVertices = new ArrayList<>();
-        List<Triple<Integer, Integer, Integer>> vtkTriangleVertices = new ArrayList<>();
-        List<IntPair> vtkGrainIds = new ArrayList<>();
-        List<Integer> vtkBoundaryIds = new ArrayList<>();
+            log.debug("isSimplifyMesh = {}", importSettings.isSimplifyMesh());
+            double numberOfBoundaries = 0d;
+            int facesSaved = 0;
+            int statusUpdateInterval = Math.max(1, (numberOfFaces - numberOfOmittedFaces) / 50);
 
-        log.debug("isSimplifyMesh = {}", importSettings.isSimplifyMesh());
-        double numberOfBoundaries = 0d;
-        int facesSaved = 0;
-        int statusUpdateInterval = Math.max(1, (numberOfFaces - numberOfOmittedFaces) / 50);
+            DecimalFormatSymbols otherSymbols = new DecimalFormatSymbols(Locale.US);
+            DecimalFormat df7 = new DecimalFormat("0.#######", otherSymbols);
+            DecimalFormat df4 = new DecimalFormat("0.####", otherSymbols);
 
+            PrintWriter wrt = new PrintWriter(new BufferedWriter(new FileWriter(outputFilePath)));
+            wrt.println("# This file was created by GBToolbox");
+            wrt.println("# It contains boundary parameters imported from DREAM.3D output files");
+            wrt.println("EXP");
 
-        DecimalFormatSymbols otherSymbols = new DecimalFormatSymbols(Locale.US);
-        DecimalFormat df7 = new DecimalFormat("0.#######", otherSymbols);
-        DecimalFormat df4 = new DecimalFormat("0.####", otherSymbols);
-
-        PrintWriter wrt = new PrintWriter(new BufferedWriter(new FileWriter(outputFilePath)));
-        wrt.println("# This file was created by GBToolbox");
-        wrt.println("# It contains boundary parameters imported from DREAM.3D output files");
-        wrt.println("EXP");
-
-        switch(pointGroupFromCrystalStructure(phaseCrystalStructures[importSettings.getPhaseId()])) {
-            case M3M: wrt.println("m-3m"); break;
-            case _6MMM: wrt.println("6/mmm"); break;
-            case MMM: wrt.println("mmm"); break;
-            default: throw new IOException("Something went wrong with selection of the point group");
-        }
-        wrt.println("L_PHI1 L_PHI L_PHI2 R_PHI1 R_PHI R_PHI2 ZENITH AZIMUTH CORRELAT AREA");
-
-
-
+            switch (pointGroupFromCrystalStructure(phaseCrystalStructures[importSettings.getPhaseId()])) {
+                case M3M:
+                    wrt.println("m-3m");
+                    break;
+                case _6MMM:
+                    wrt.println("6/mmm");
+                    break;
+                case MMM:
+                    wrt.println("mmm");
+                    break;
+                default:
+                    throw new IOException("Something went wrong with selection of the point group");
+            }
+            wrt.println("L_PHI1 L_PHI L_PHI2 R_PHI1 R_PHI R_PHI2 ZENITH AZIMUTH CORRELAT AREA");
 
             int boundaryId = 0;
             for (Entry<IntPair, Set<Integer>> boundary : grainIdsFaceIds.entrySet()) {
@@ -203,20 +204,20 @@ public class Dream3DToGbdatImporter extends SwingWorker<Void, Void> {
                         numberOfBoundaries += 1d / (double) faceIds.size();
 
                         wrt.println(
-                            df4.format( Math.toDegrees( grainEulerAngles[leftGrainId].phi1())) + " "+
-                                df4.format( Math.toDegrees( grainEulerAngles[leftGrainId].Phi()))+ " "+
-                                df4.format( Math.toDegrees( grainEulerAngles[leftGrainId].phi2()))+ " "+
+                            df4.format(Math.toDegrees(grainEulerAngles[leftGrainId].phi1())) + " " +
+                                df4.format(Math.toDegrees(grainEulerAngles[leftGrainId].Phi())) + " " +
+                                df4.format(Math.toDegrees(grainEulerAngles[leftGrainId].phi2())) + " " +
 
-                                df4.format( Math.toDegrees( grainEulerAngles[rightGrainId].phi1())) + " "+
-                                df4.format( Math.toDegrees( grainEulerAngles[rightGrainId].Phi()))+ " "+
-                                df4.format( Math.toDegrees( grainEulerAngles[rightGrainId].phi2()))+ " "+
+                                df4.format(Math.toDegrees(grainEulerAngles[rightGrainId].phi1())) + " " +
+                                df4.format(Math.toDegrees(grainEulerAngles[rightGrainId].Phi())) + " " +
+                                df4.format(Math.toDegrees(grainEulerAngles[rightGrainId].phi2())) + " " +
 
-                                df4.format( Math.toDegrees( faceNormals[faceId].zenith()))+ " "+
-                                df4.format( Math.toDegrees( faceNormals[faceId].azimuth()))+ " "+
+                                df4.format(Math.toDegrees(faceNormals[faceId].zenith())) + " " +
+                                df4.format(Math.toDegrees(faceNormals[faceId].azimuth())) + " " +
 
                                 faceIds.size() + " " +
 
-                                df7.format(faceAreas[faceId]) );
+                                df7.format(faceAreas[faceId]));
 
                         facesSaved++;
                     }
@@ -226,14 +227,14 @@ public class Dream3DToGbdatImporter extends SwingWorker<Void, Void> {
                     runQSlim(faceIds.size(), importSettings);
 
                     int numberOfFacesAfterSimplification = getNumberOfFacesAfterSimplification();
-                    log.debug("before {} after {}, {} {}", faceIds.size(), numberOfFacesAfterSimplification, importSettings.getSimplificationRate(), importSettings.getFacesLowerLimit());
+                    log.debug("before {} after {}, {} {}", faceIds.size(), numberOfFacesAfterSimplification,
+                        importSettings.getSimplificationRate(), importSettings.getFacesLowerLimit());
 
                     BufferedReader reader = new BufferedReader(new FileReader("QSlimOutput.smf"));
                     String line;
                     List<DoubleTriple> vertexCoords = new ArrayList<>();
 
                     int lastVtkSize = vtkVertices.size();
-
 
                     while ((line = reader.readLine()) != null) {
                         String[] words = line.trim().split(WHITESPACE);
@@ -264,42 +265,42 @@ public class Dream3DToGbdatImporter extends SwingWorker<Void, Void> {
                                 final double y3 = vertexCoords.get(n3).getY();
                                 final double z3 = vertexCoords.get(n3).getZ();
 
-                                final double X = y3* (z1 - z2) + y1* (z2 - z3) + y2* (-z1 + z3);
-                                final double Y = x3* (-z1 + z2) + x2* (z1 - z3) + x1* (-z2 + z3);
-                                final double Z = x3* (y1 - y2) + x1* (y2 - y3) + x2* (-y1 + y3);
+                                final double X = y3 * (z1 - z2) + y1 * (z2 - z3) + y2 * (-z1 + z3);
+                                final double Y = x3 * (-z1 + z2) + x2 * (z1 - z3) + x1 * (-z2 + z3);
+                                final double Z = x3 * (y1 - y2) + x1 * (y2 - y3) + x2 * (-y1 + y3);
 
-                                final double area = 0.5d * Math.sqrt(X*X + Y*Y + Z*Z);
+                                final double area = 0.5d * Math.sqrt(X * X + Y * Y + Z * Z);
 
                                 final UnitVector v1 = new UnitVector();
                                 final UnitVector v2 = new UnitVector();
-                                v1.set( x2-x1, y2-y1, z2-z1 );
-                                v2.set( x3-x1, y3-y1, z3-z1 );
+                                v1.set(x2 - x1, y2 - y1, z2 - z1);
+                                v2.set(x3 - x1, y3 - y1, z3 - z1);
 
                                 v1.cross(v2);
 
-                                vtkTriangleVertices.add(Triple.of(lastVtkSize+n1, lastVtkSize+n2, lastVtkSize+n3));
+                                vtkTriangleVertices.add(Triple.of(lastVtkSize + n1, lastVtkSize + n2, lastVtkSize + n3));
                                 vtkGrainIds.add(IntPair.of(leftGrainId, rightGrainId));
                                 vtkBoundaryIds.add(boundaryId);
 
                                 wrt.println(
-                                    df4.format( Math.toDegrees( grainEulerAngles[leftGrainId].phi1())) + " "+
-                                        df4.format( Math.toDegrees( grainEulerAngles[leftGrainId].Phi()))+ " "+
-                                        df4.format( Math.toDegrees( grainEulerAngles[leftGrainId].phi2()))+ " "+
+                                    df4.format(Math.toDegrees(grainEulerAngles[leftGrainId].phi1())) + " " +
+                                        df4.format(Math.toDegrees(grainEulerAngles[leftGrainId].Phi())) + " " +
+                                        df4.format(Math.toDegrees(grainEulerAngles[leftGrainId].phi2())) + " " +
 
-                                        df4.format( Math.toDegrees( grainEulerAngles[rightGrainId].phi1())) + " "+
-                                        df4.format( Math.toDegrees( grainEulerAngles[rightGrainId].Phi()))+ " "+
-                                        df4.format( Math.toDegrees( grainEulerAngles[rightGrainId].phi2()))+ " "+
+                                        df4.format(Math.toDegrees(grainEulerAngles[rightGrainId].phi1())) + " " +
+                                        df4.format(Math.toDegrees(grainEulerAngles[rightGrainId].Phi())) + " " +
+                                        df4.format(Math.toDegrees(grainEulerAngles[rightGrainId].phi2())) + " " +
 
-                                        df4.format( Math.toDegrees( v1.zenith()))+ " "+
-                                        df4.format( Math.toDegrees( v1.azimuth()))+ " "+
+                                        df4.format(Math.toDegrees(v1.zenith())) + " " +
+                                        df4.format(Math.toDegrees(v1.azimuth())) + " " +
 
                                         numberOfFacesAfterSimplification + " " +
 
-                                        df7.format(area) );
+                                        df7.format(area));
 
                                 facesSaved++;
 
-                            } catch(IllegalArgumentException e) {
+                            } catch (IllegalArgumentException e) {
                                 log.error("", e);
                                 // trianglesSkipped++;
                                 continue;
@@ -310,22 +311,24 @@ public class Dream3DToGbdatImporter extends SwingWorker<Void, Void> {
                     reader.close();
                 }
             }
-            updateProgress("Saving Faces", ". Import completed", numberOfFaces - numberOfOmittedFaces, numberOfFaces - numberOfOmittedFaces);
-        wrt.close();
+            updateProgress("Saving Faces", ". Import completed", numberOfFaces - numberOfOmittedFaces,
+                numberOfFaces - numberOfOmittedFaces);
+            wrt.close();
 
+            if (importSettings.isSimplifyMesh()) {
+                writeVtk(vtkVertices, vtkTriangleVertices, vtkGrainIds, vtkBoundaryIds);
+            }
 
-        if (importSettings.isSimplifyMesh()) {
-            writeVtk(vtkVertices, vtkTriangleVertices, vtkGrainIds, vtkBoundaryIds);
-        }
+            //log.info("Saving boundaries to csv file took: {} millis.", currentTimeMillis() - startTime);
+            log.info("Number of boundaries (cross-check): {}", (int) numberOfBoundaries);
+            log.info("Number of faces: {}", numberOfFaces);
+            log.info("Number of non-interior faces: {}", numberOfNonInteriorFaces);
+            log.info("Number of surface grains: {}", numberOfSurfaceGrains);
+            log.info("Number of surface faces: {}", numberOfSurfaceFaces);
 
-        //log.info("Saving boundaries to csv file took: {} millis.", currentTimeMillis() - startTime);
-        log.info("Number of boundaries (cross-check): {}", (int) numberOfBoundaries);
-        log.info("Number of faces: {}", numberOfFaces);
-        log.info("Number of non-interior faces: {}", numberOfNonInteriorFaces);
-        log.info("Number of surface grains: {}", numberOfSurfaceGrains);
-        log.info("Number of surface faces: {}", numberOfSurfaceFaces);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("There was an error while importing DREAM.3D file: {}", e);
+            return null;
         }
         return null;
 
@@ -388,9 +391,9 @@ public class Dream3DToGbdatImporter extends SwingWorker<Void, Void> {
         List<LongTriple> nodesPerFace = new ArrayList<>(numberOfFaces);
         range(0, numberOfFaces).forEach(faceId -> {
             nodesPerFace.add(LongTriple.of(
-                    rawNodesPerFace[faceId][0],
-                    rawNodesPerFace[faceId][1],
-                    rawNodesPerFace[faceId][2]));
+                rawNodesPerFace[faceId][0],
+                rawNodesPerFace[faceId][1],
+                rawNodesPerFace[faceId][2]));
         });
         return nodesPerFace;
     }
@@ -541,8 +544,7 @@ public class Dream3DToGbdatImporter extends SwingWorker<Void, Void> {
             }
             errorStream.close();
             process.waitFor();
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             log.error("Error during mesh simplification", e);
         }
     }
@@ -551,7 +553,7 @@ public class Dream3DToGbdatImporter extends SwingWorker<Void, Void> {
         int numberOfTriangles = 0;
         String line;
         try (BufferedReader reader = new BufferedReader(new FileReader("QSlimOutput.smf"))) {
-            while ((line = reader.readLine()) != null)   {
+            while ((line = reader.readLine()) != null) {
                 String[] words = line.trim().split(WHITESPACE);
                 if ("f".equals(words[0])) {
                     numberOfTriangles++;
