@@ -1,5 +1,18 @@
 package com.github.kglowins.gbtoolbox.gui_modules;
 
+import static java.util.Arrays.stream;
+import static java.util.stream.IntStream.range;
+
+import com.github.kglowins.gbtoolbox.enums.PointGroup;
+import com.github.kglowins.gbtoolbox.gui_bricks.Dialog_GBPlusLimitsForDraw;
+import com.github.kglowins.gbtoolbox.utils.EulerAngles;
+import com.github.kglowins.gbtoolbox.utils.FileUtils;
+import com.github.kglowins.gbtoolbox.utils.GBPlusLimits;
+import com.github.kglowins.gbtoolbox.utils.InterfaceMatrix;
+import com.github.kglowins.gbtoolbox.utils.Matrix3x3;
+import com.github.kglowins.gbtoolbox.utils.Transformations;
+import com.github.kglowins.gbtoolbox.utils.UnitVector;
+import io.jhdf.HdfFile;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -11,42 +24,25 @@ import java.io.PrintWriter;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Locale;
-import java.util.stream.IntStream;
 import javax.swing.DefaultListModel;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
 import javax.swing.JTextField;
 import javax.swing.SwingWorker;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
-
-import com.github.kglowins.gbtoolbox.enums.PointGroup;
-import com.github.kglowins.gbtoolbox.gui_bricks.Dialog_GBPlusLimitsForDraw;
-
-
-import ncsa.hdf.object.Dataset;
-import ncsa.hdf.object.FileFormat;
 import net.miginfocom.swing.MigLayout;
-import com.github.kglowins.gbtoolbox.utils.EulerAngles;
-import com.github.kglowins.gbtoolbox.utils.FileUtils;
-import com.github.kglowins.gbtoolbox.utils.GBPlusLimits;
-import com.github.kglowins.gbtoolbox.utils.InterfaceMatrix;
-import com.github.kglowins.gbtoolbox.utils.Matrix3x3;
-import com.github.kglowins.gbtoolbox.utils.Transformations;
-import com.github.kglowins.gbtoolbox.utils.UnitVector;
-
-import javax.swing.JScrollPane;
-import javax.swing.JList;
-
 import org.apache.commons.math3.util.FastMath;
-
-import javax.swing.JCheckBox;
 
 
 
@@ -428,7 +424,7 @@ public class DrawSelectedGBsPanel extends JPanel implements ListSelectionListene
 
 			statusLbl.setText("Import started");
 
-			int[] hdf_cryststruct;
+			long[] hdf_cryststruct;
 			int[] hdf_phases;
 			int usedPhase;
 			EulerAngles[] eul;
@@ -452,145 +448,135 @@ public class DrawSelectedGBsPanel extends JPanel implements ListSelectionListene
 				
 
 				//grains				
-				final float[] hdf_euler;
-				final byte[] surfGrains;
+				final float[][] hdf_euler;
+				final int[] surfGrains;
 
-				final FileFormat fileFormat = FileFormat.getFileFormat(FileFormat.FILE_TYPE_HDF5);
+				File file = new File(voxelFld.getText());
 
-				if (fileFormat == null) throw new IOException("Cannot find HDF5 FileFormat");
+				try (HdfFile testFile = new HdfFile(file)) {
 
-				// open the file with read and write access
-				final FileFormat testFile = fileFormat.open(voxelFld.getText(), FileFormat.READ);
-				if (testFile == null) throw new IOException("Failed to open file");
+					// phase data
+					hdf_cryststruct = stream((long[][]) testFile.getDatasetByPath("DataContainers/DataContainer/Phase Data/CrystalStructures").getData())
+						.flatMapToLong(Arrays::stream)
+						.toArray();
 
-				// open the file and retrieve the file structure
-				testFile.open();
+					// grain data
+					hdf_phases = stream((int[][]) testFile.getDatasetByPath("DataContainers/DataContainer/Grain Data/Phases").getData())
+						.flatMapToInt(Arrays::stream)
+						.toArray();
 
-				// phase data
-				Dataset dataset = (Dataset)testFile.get("DataContainers/DataContainer/Phase Data/CrystalStructures");
-				hdf_cryststruct = (int[])dataset.read();
+					surfGrains = stream((int[][]) testFile.getDatasetByPath("DataContainers/DataContainer/Grain Data/SurfaceFeatures").getData())
+						.flatMapToInt(Arrays::stream)
+						.toArray();
 
-				// grain data					
-				dataset = (Dataset)testFile.get("DataContainers/DataContainer/Grain Data/Phases");
-				hdf_phases = (int[])dataset.read();
-				
-				dataset = (Dataset)testFile.get("DataContainers/DataContainer/Grain Data/SurfaceFeatures");
-				surfGrains = (byte[])dataset.read();
-				
-				int countSurf = 0;
-				for(byte b : surfGrains) if(b==1) countSurf++;
-				System.out.println("There were " + countSurf + " surface grains.");
+					int countSurf = 0;
+					for (int b : surfGrains)
+						if (b == 1)
+							countSurf++;
+					System.out.println("There were " + countSurf + " surface grains.");
 
-				dataset = (Dataset)testFile.get("DataContainers/DataContainer/Grain Data/AvgEulerAngles");
-				hdf_euler = (float[])dataset.read();
+					hdf_euler = (float[][]) testFile.getDatasetByPath("DataContainers/DataContainer/Grain Data/AvgEulerAngles").getData();
 
+					// find the number of grains of each phase
+					int[] phaseCounter = new int[hdf_cryststruct.length];
+					for (int i = 0; i < phaseCounter.length; i++)
+						phaseCounter[i] = 0;
 
-				// find the number of grains of each phase
-				int[] phaseCounter = new int[hdf_cryststruct.length];
-				for(int i = 0; i < phaseCounter.length; i++) phaseCounter[i] = 0;
+					for (int i = 0; i < hdf_phases.length; i++)
+						phaseCounter[hdf_phases[i]]++;
 
-				for(int i = 0; i < hdf_phases.length; i++) phaseCounter[ hdf_phases[i] ]++;
+					// find EulerAngles
+					eul = new EulerAngles[hdf_phases.length];
 
-				// find EulerAngles					
-				eul = new EulerAngles[hdf_phases.length];
+					for (int i = 0; i < hdf_phases.length; i++) {
+						eul[i] = new EulerAngles();
+						eul[i].set(hdf_euler[i][0], hdf_euler[i][1], hdf_euler[i][2]);
+					}
 
-				for(int i = 0; i < hdf_phases.length; i++) { 
-					eul[i] = new EulerAngles();
-					final int threeI = 3 * i;
-					eul[i].set(hdf_euler[threeI], hdf_euler[threeI+1], hdf_euler[threeI+2] );
-				}
+					// READ NODES
+					float[][] rawNodeCoordinates = (float[][]) testFile.getDatasetByPath("DataContainers/TriangleDataContainer/_SIMPL_GEOMETRY/SharedVertexList").getData();;
+					nodeX = new float[rawNodeCoordinates.length];
+					nodeY = new float[rawNodeCoordinates.length];
+					nodeZ = new float[rawNodeCoordinates.length];
+					range(0, rawNodeCoordinates.length).forEach(nodeId -> {
+						nodeX[nodeId] = rawNodeCoordinates[nodeId][0];
+						nodeY[nodeId] = rawNodeCoordinates[nodeId][1];
+						nodeZ[nodeId] = rawNodeCoordinates[nodeId][2];
+					});
 
+					byte[][] nodeTypesRaw = (byte[][]) testFile.getDatasetByPath("DataContainers/TriangleDataContainer/VertexData/NodeType").getData();
+					types = new byte[nodeTypesRaw.length];
+					for (int index = 0; index < nodeTypesRaw.length; index++) {
+						types[index] = nodeTypesRaw[index][0];
+					}
 
+					// READ TRIANGLES
+					long[][] rawTriList = (long[][]) testFile.getDatasetByPath("DataContainers/TriangleDataContainer/_SIMPL_GEOMETRY/SharedTriList").getData();;
+					tNode1 = new int[rawTriList.length];
+					tNode2 = new int[rawTriList.length];
+					tNode3 = new int[rawTriList.length];
 
-				// READ NODES
-				dataset = (Dataset)testFile.get("DataContainers/TriangleDataContainer/_SIMPL_GEOMETRY/SharedVertexList");
+					range(0, rawTriList.length).forEach(triId -> {
+						tNode1[triId] = Long.valueOf(rawTriList[triId][0]).intValue();
+						tNode2[triId] = Long.valueOf(rawTriList[triId][1]).intValue();
+						tNode3[triId] = Long.valueOf(rawTriList[triId][2]).intValue();
+					});
 
-				float[] rawNodeCoordinates = (float[]) dataset.read();
-				nodeX = new float[rawNodeCoordinates.length / 3];
-				nodeY = new float[rawNodeCoordinates.length / 3];
-				nodeZ = new float[rawNodeCoordinates.length / 3];
+					int[][] rawSpins = (int[][]) testFile.getDatasetByPath("DataContainers/TriangleDataContainer/FaceData/FaceLabels").getData();;
+					spin1 = new int[rawSpins.length];
+					spin2 = new int[rawSpins.length];
 
-				IntStream.range(0, rawNodeCoordinates.length / 3).forEach(nodeId -> {
-					int idTimes3 = 3 * nodeId;
-					nodeX[nodeId] = rawNodeCoordinates[idTimes3];
-					nodeY[nodeId] = rawNodeCoordinates[idTimes3 + 1];
-					nodeZ[nodeId] = rawNodeCoordinates[idTimes3 + 2];
-				});
+					range(0, rawSpins.length).forEach(spinId -> {
+						spin1[spinId] = rawSpins[spinId][0];
+						spin2[spinId] = rawSpins[spinId][1];
+					});
 
-				dataset = (Dataset)testFile.get("DataContainers/TriangleDataContainer/VertexData/NodeType");
-				types = (byte[])dataset.read();
+					// choose the phase
+					statusLbl.setText("Import in progess: select phase");
 
+					final Object[] possibilities = new Object[hdf_cryststruct.length];
+					for (int i = 0; i < hdf_cryststruct.length; i++) {
 
-				// READ TRIANGLES
-				dataset = (Dataset)testFile.get("DataContainers/TriangleDataContainer/_SIMPL_GEOMETRY/SharedTriList");
+						possibilities[i] =
+							"Phase " + i + ": " + phaseCounter[i] + " grains, " + ptGrpName(hdf_cryststruct[i]);
+						//+ ", " + phTypeName(hdf_cryststruct[i]);
+					}
 
-				long[] rawTriList = (long[]) dataset.read();
-				tNode1 = new int[rawTriList.length / 3];
-				tNode2 = new int[rawTriList.length / 3];
-				tNode3 = new int[rawTriList.length / 3];
+					String s = "";
+					usedPhase = -1;
 
-				IntStream.range(0, rawTriList.length / 3).forEach(triId -> {
-					int idTimes3 = 3 * triId;
-					tNode1[triId] = Long.valueOf(rawTriList[idTimes3]).intValue();
-					tNode2[triId] = Long.valueOf(rawTriList[idTimes3 + 1]).intValue();
-					tNode3[triId] = Long.valueOf(rawTriList[idTimes3 + 2]).intValue();
-				});
+					boolean correctPhase = false;
 
-
-				dataset = (Dataset)testFile.get("DataContainers/TriangleDataContainer/FaceData/FaceLabels");
-				int[] rawSpins = (int[]) dataset.read();
-				spin1 = new int[rawSpins.length / 2];
-				spin2 = new int[rawSpins.length / 2];
-
-				IntStream.range(0, rawSpins.length / 2).forEach(spinId -> {
-					int idTimes2 = 2 * spinId;
-					spin1[spinId] = rawSpins[idTimes2];
-					spin2[spinId] = rawSpins[idTimes2 + 1];
-				});
-
-
-				// choose the phase
-				statusLbl.setText("Import in progess: select phase");
-
-				final Object[] possibilities = new Object[hdf_cryststruct.length];
-				for(int i = 0; i < hdf_cryststruct.length; i++) {
-
-					possibilities[i] = "Phase " + i + ": " +  phaseCounter[i] + " grains, " + ptGrpName(hdf_cryststruct[i]);
-							//+ ", " + phTypeName(hdf_cryststruct[i]);
-				}
-
-				String s = "";
-				usedPhase = -1;
-				
-				boolean correctPhase = false;
-				
-				while(!correctPhase) {
-					s = (String)JOptionPane.showInputDialog(
+					while (!correctPhase) {
+						s = (String) JOptionPane.showInputDialog(
 							null,
 							"Boundaries between grains only of selected phase will be imported.",
 							"Select phase",
 							JOptionPane.QUESTION_MESSAGE,
 							null,
 							possibilities,
-							possibilities[0] );
-					if (s == null) {
-						statusLbl.setText("Import aborted");
-						return null;
-					} else {
-						usedPhase = -1;
-						for(int i = 0; i < hdf_cryststruct.length; i++) if(s.compareTo((String)possibilities[i]) == 0) {
-							usedPhase = i;
-							break;
-						}
-						if(hdf_cryststruct[usedPhase] >= 0 && hdf_cryststruct[usedPhase] <= 2 ) {
-							correctPhase = true;
+							possibilities[0]);
+						if (s == null) {
+							statusLbl.setText("Import aborted");
+							return null;
 						} else {
-							JOptionPane.showMessageDialog(null,
+							usedPhase = -1;
+							for (int i = 0; i < hdf_cryststruct.length; i++)
+								if (s.compareTo((String) possibilities[i]) == 0) {
+									usedPhase = i;
+									break;
+								}
+							if (hdf_cryststruct[usedPhase] >= 0
+								&& hdf_cryststruct[usedPhase] <= 2) {
+								correctPhase = true;
+							} else {
+								JOptionPane.showMessageDialog(null,
 									"Cannot select unknown/unsupported point group.",
 									"Error",
 									JOptionPane.ERROR_MESSAGE);
+							}
 						}
-					}							
+					}
 				}
 				
 			} catch(Exception exc) {
@@ -611,7 +597,7 @@ public class DrawSelectedGBsPanel extends JPanel implements ListSelectionListene
 				
 				Matrix3x3[] setC = null;
 				
-				switch(hdf_cryststruct[usedPhase]) {
+				switch(Long.valueOf(hdf_cryststruct[usedPhase]).intValue()) {
 					case 1: setC = Transformations.getSymmetryTransformations(PointGroup.M3M); break; 
 			//		case 0: setC = Transformations.getSymmetryTransformations(PointGroup._6MMM); break;					
 					default: throw new IOException("Unsupported point group");
@@ -861,9 +847,9 @@ public class DrawSelectedGBsPanel extends JPanel implements ListSelectionListene
 		
 		
 
-	private final String ptGrpName(int cryst) {
-		switch(cryst) {
-		case 1: return "m3\u0305m"; 
+	private final String ptGrpName(long cryst) {
+		switch(Long.valueOf(cryst).intValue()) {
+		case 1: return "m3\u0305m";
 		case 0: return "6/mmm";
 		case 2: return "mmm";
 		default: return "Unknown/unsupported"; 

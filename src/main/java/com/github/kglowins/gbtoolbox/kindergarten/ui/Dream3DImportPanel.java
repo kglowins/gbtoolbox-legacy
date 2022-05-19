@@ -1,10 +1,20 @@
 package com.github.kglowins.gbtoolbox.kindergarten.ui;
 
 
+import static com.github.kglowins.gbtoolbox.kindergarten.io.dream3d.Dream3DFile.CRYSTAL_STRUCTURE_POINT_GROUP_MAP;
+import static com.github.kglowins.gbtoolbox.kindergarten.io.dream3d.Dream3DFile.pointGroupFromCrystalStructure;
+import static com.github.kglowins.gbtoolbox.kindergarten.io.dream3d.Dream3DToGbdatImporter.STATUS_MESSAGE_PROPERTY;
+import static com.github.kglowins.gbtoolbox.kindergarten.io.filechooser.FileExtensionUtils.decorateWithExtension;
+import static com.github.kglowins.gbtoolbox.kindergarten.ui.bricks.ButtonFactory.createCancelButton;
+import static com.github.kglowins.gbtoolbox.kindergarten.ui.bricks.ButtonFactory.createFolderButton;
+import static com.github.kglowins.gbtoolbox.kindergarten.ui.bricks.ButtonFactory.createStartButton;
+
 import com.github.kglowins.gbtoolbox.kindergarten.io.dream3d.Dream3DDataSetPaths;
 import com.github.kglowins.gbtoolbox.kindergarten.io.dream3d.Dream3DFile;
 import com.github.kglowins.gbtoolbox.kindergarten.io.dream3d.Dream3DImportSettings;
 import com.github.kglowins.gbtoolbox.kindergarten.io.dream3d.Dream3DToGbdatImporter;
+import io.jhdf.api.Group;
+import io.jhdf.api.Node;
 import java.awt.event.ActionListener;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -28,16 +38,17 @@ import lombok.extern.slf4j.Slf4j;
 import net.miginfocom.swing.MigLayout;
 import org.apache.commons.lang3.tuple.Pair;
 
-import static com.github.kglowins.gbtoolbox.kindergarten.io.dream3d.Dream3DFile.CRYSTAL_STRUCTURE_POINT_GROUP_MAP;
-import static com.github.kglowins.gbtoolbox.kindergarten.io.dream3d.Dream3DFile.pointGroupFromCrystalStructure;
-import static com.github.kglowins.gbtoolbox.kindergarten.io.dream3d.Dream3DToGbdatImporter.STATUS_MESSAGE_PROPERTY;
-import static com.github.kglowins.gbtoolbox.kindergarten.io.filechooser.FileExtensionUtils.decorateWithExtension;
-import static com.github.kglowins.gbtoolbox.kindergarten.ui.bricks.ButtonFactory.createCancelButton;
-import static com.github.kglowins.gbtoolbox.kindergarten.ui.bricks.ButtonFactory.createFolderButton;
-import static com.github.kglowins.gbtoolbox.kindergarten.ui.bricks.ButtonFactory.createStartButton;
-
 @Slf4j
 public class Dream3DImportPanel extends JPanel {
+
+	private static void recursivePrintGroup(Group group, Set<String> dataSetPaths) {
+		for (Node node : group) {
+			dataSetPaths.add(node.getPath());
+			if (node instanceof Group) {
+				recursivePrintGroup((Group) node, dataSetPaths);
+			}
+		}
+	}
 
 	private JLabel outputFileLabel;
 	private JTextField outputFileTextField;
@@ -127,7 +138,7 @@ public class Dream3DImportPanel extends JPanel {
 		add(lowerLimitTextField, "cell 1 17, alignx left");
 		add(startButton, "cell 0 18, gapy 10");
 		add(cancelButton, "cell 0 18, gapy 10");
-    add(statusLabel, "cell 0 19 3 1, growx");
+    	add(statusLabel, "cell 0 19 3 1, growx");
 	}
 
 	private void initializeElements() {
@@ -231,14 +242,14 @@ public class Dream3DImportPanel extends JPanel {
 			return;
 		}
 		try {
-			Dream3DFile dreamFile = Dream3DFile.open(dreamFilePath);
+			Dream3DFile dreamFile = Dream3DFile.init(dreamFilePath);
 			Set<String> dataSetPaths = dreamFile.getDataSetPaths();
 			Dream3DDataSetPaths guessedDataSetPaths = dreamFile.tryGuessDataSetPaths();
 			updateComboBoxes(dataSetPaths, guessedDataSetPaths);
 		} catch (Exception e) {
 			log.error("Could not read {}", dreamFilePath, e);
 			resetComboBoxes();
-		}	
+		}
 	}
 	
 	private void resetComboBoxes() {
@@ -330,8 +341,8 @@ public class Dream3DImportPanel extends JPanel {
 		return settings;
 	}
 
-	private String getPointGroupLabel(int[] crystalStructures, int phaseId) {
-	  return CRYSTAL_STRUCTURE_POINT_GROUP_MAP.keySet().contains(crystalStructures[phaseId]) ?
+	private String getPointGroupLabel(long[] crystalStructures, int phaseId) {
+	  return CRYSTAL_STRUCTURE_POINT_GROUP_MAP.containsKey(crystalStructures[phaseId]) ?
         pointGroupFromCrystalStructure(crystalStructures[phaseId]).name() :
         "Unsupported";
   }
@@ -373,18 +384,13 @@ public class Dream3DImportPanel extends JPanel {
 			Dream3DDataSetPaths dataSetPaths = getDataSetPathsFromComboBoxes();
 			Dream3DImportSettings importSettings = getSettingsFromForm();
 
-			Dream3DFile dreamFile = null; //TODO
-			try {
-				dreamFile = Dream3DFile.open(dreamFileTextField.getText());
-			} catch (Exception e) {
-				return;
-			}
+			Dream3DFile dreamFile = Dream3DFile.init(dreamFileTextField.getText());
 
 			String gbdatPath = outputFileTextField.getText();
 			try {
 				importer = Dream3DToGbdatImporter.from(dreamFile, dataSetPaths).to(gbdatPath, importSettings);
 
-				int[] crystalStructures = importer.getPhaseCrystalStructures();
+				long[] crystalStructures = importer.getPhaseCrystalStructures();
 				int[] numberOfGrainsPerPhase = importer.getNumberOfGrainsPerPhase();
 				Object[] options = IntStream.range(0, importer.getNumberOfPhases())
 						.mapToObj(phaseId -> String.format("Phase #%d: Point Group %s, %d Grains", phaseId,

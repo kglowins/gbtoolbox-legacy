@@ -1,44 +1,45 @@
 package com.github.kglowins.gbtoolbox.kindergarten.io.dream3d;
 
-import com.github.kglowins.gbtoolbox.enums.PointGroup;
-import com.google.common.collect.ImmutableMap;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Set;
-import javax.swing.tree.DefaultMutableTreeNode;
-import ncsa.hdf.object.Dataset;
-import ncsa.hdf.object.FileFormat;
-import ncsa.hdf.object.Group;
-
 import static com.github.kglowins.gbtoolbox.enums.PointGroup.M3M;
 import static com.github.kglowins.gbtoolbox.enums.PointGroup.MMM;
 import static com.github.kglowins.gbtoolbox.enums.PointGroup._6MMM;
-import static ncsa.hdf.object.FileFormat.FILE_TYPE_HDF5;
-import static ncsa.hdf.object.FileFormat.READ;
-import static ncsa.hdf.object.FileFormat.getFileFormat;
+
+import com.github.kglowins.gbtoolbox.enums.PointGroup;
+import com.google.common.collect.ImmutableMap;
+import io.jhdf.HdfFile;
+import io.jhdf.api.Dataset;
+import io.jhdf.api.Group;
+import io.jhdf.api.Node;
+import java.io.File;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
+
 
 public class Dream3DFile {
 
-    private FileFormat fileFormat;
+    private File dreamFile;
 
-    public static final Map<Integer, PointGroup> CRYSTAL_STRUCTURE_POINT_GROUP_MAP
-        = new ImmutableMap.Builder<Integer, PointGroup>()
-        .put(0, _6MMM)
-        .put(1, M3M)
-        .put(2, MMM)
+    public static final Map<Long, PointGroup> CRYSTAL_STRUCTURE_POINT_GROUP_MAP
+        = new ImmutableMap.Builder<Long, PointGroup>()
+        .put(0L, _6MMM)
+        .put(1L, M3M)
+        .put(2L, MMM)
         .build();
 
-    private Dream3DFile(String dream3DFilePath) throws Exception {
-        fileFormat = getFileFormat(FILE_TYPE_HDF5);
-        fileFormat = fileFormat.createInstance(dream3DFilePath, READ);
-        fileFormat.open();
+    private Dream3DFile(String dream3DFilePath) {
+        dreamFile = new File(dream3DFilePath);
     }
 
-    public static Dream3DFile open(String dream3DFilePath) throws Exception {
+    public HdfFile openHdf(){
+        return new HdfFile(dreamFile);
+    }
+
+    public static Dream3DFile init(String dream3DFilePath) {
         return new Dream3DFile(dream3DFilePath);
     }
 
-    public static PointGroup pointGroupFromCrystalStructure(int crystalStructureId) {
+    public static PointGroup pointGroupFromCrystalStructure(long crystalStructureId) {
         return CRYSTAL_STRUCTURE_POINT_GROUP_MAP.get(crystalStructureId);
     }
 
@@ -57,30 +58,31 @@ public class Dream3DFile {
             .build();
     }
 
-    public Object readDataSet(String dataSetPath) throws Exception {
-        Dataset dataset = (Dataset) fileFormat.get(dataSetPath);
-        return dataset.read();
+    public Object readDataSet(String dataSetPath) {
+        try (HdfFile hdfFile = openHdf()) {
+            Dataset dataset = hdfFile.getDatasetByPath(dataSetPath);
+            return dataset.getData();
+        }
     }
 
     public Set<String> getDataSetPaths() {
         Set<String> dataSetPaths = new LinkedHashSet<>();
-        Group root = (Group) ((DefaultMutableTreeNode) fileFormat.getRootNode()).getUserObject();
-        walkGroupAndSavePaths(root, dataSetPaths);
+        try (HdfFile hdfFile = openHdf()) {
+            walkGroupAndSavePaths(hdfFile, dataSetPaths);
+        }
         return dataSetPaths;
     }
 
     private static void walkGroupAndSavePaths(Group group, Set<String> dataSetPaths) {
-        group.getMemberList().forEach(member -> {
-            if (member instanceof Group) {
-                Group subgroup = (Group) member;
-                walkGroupAndSavePaths(subgroup, dataSetPaths);
-            } else {
-                String dataSetPath = member.getFullName();
-                if (!dataSetPath.contains("Pipeline")) {
-                    dataSetPaths.add(member.getFullName());
-                }
+        for (Node node : group) {
+            String nodePath = node.getPath();
+            if (!nodePath.contains("Pipeline")) {
+                dataSetPaths.add(node.getPath());
             }
-        });
+            if (node instanceof Group) {
+                walkGroupAndSavePaths((Group) node, dataSetPaths);
+            }
+        }
     }
 
     private String tryMatchDefaultPath(String defaultPathSubstring) {

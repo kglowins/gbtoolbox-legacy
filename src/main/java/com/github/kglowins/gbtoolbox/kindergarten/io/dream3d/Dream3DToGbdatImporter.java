@@ -1,5 +1,9 @@
 package com.github.kglowins.gbtoolbox.kindergarten.io.dream3d;
 
+import static com.github.kglowins.gbtoolbox.kindergarten.io.dream3d.Dream3DFile.pointGroupFromCrystalStructure;
+import static java.util.Arrays.stream;
+import static java.util.stream.IntStream.range;
+
 import com.github.kglowins.gbtoolbox.kindergarten.util.tuples.DoubleTriple;
 import com.github.kglowins.gbtoolbox.kindergarten.util.tuples.IntPair;
 import com.github.kglowins.gbtoolbox.kindergarten.util.tuples.LongTriple;
@@ -16,6 +20,7 @@ import java.io.PrintWriter;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -23,15 +28,11 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.stream.IntStream;
 import javax.swing.SwingWorker;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
-
-import static com.github.kglowins.gbtoolbox.kindergarten.io.dream3d.Dream3DFile.pointGroupFromCrystalStructure;
 
 
 @Slf4j
@@ -46,7 +47,7 @@ public class Dream3DToGbdatImporter extends SwingWorker<Void, Void> {
     private Dream3DImportSettings importSettings;
 
     @Getter
-    private int[] phaseCrystalStructures;
+    private long[] phaseCrystalStructures;
     @Getter
     private int numberOfPhases;
     @Getter
@@ -69,19 +70,25 @@ public class Dream3DToGbdatImporter extends SwingWorker<Void, Void> {
     private float[][] nodeCoordinates;
     private int numberOfOmittedFaces;
 
-    private Dream3DToGbdatImporter(Dream3DFile dream3DFile, Dream3DDataSetPaths dataSetPaths) throws Exception {
+    private Dream3DToGbdatImporter(Dream3DFile dream3DFile, Dream3DDataSetPaths dataSetPaths) {
         this.dream3DFile = dream3DFile;
         this.dataSetPaths = dataSetPaths;
 
-        phaseCrystalStructures = (int[]) dream3DFile.readDataSet(dataSetPaths.getPhaseCrystalStructures());
+        phaseCrystalStructures = stream((long[][]) dream3DFile.readDataSet(dataSetPaths.getPhaseCrystalStructures()))
+                .flatMapToLong(Arrays::stream)
+                .toArray();
+
         numberOfPhases = phaseCrystalStructures.length;
-        grainPhases = (int[]) dream3DFile.readDataSet(dataSetPaths.getGrainPhases());
+        grainPhases = stream((int[][]) dream3DFile.readDataSet(dataSetPaths.getGrainPhases()))
+                .flatMapToInt(Arrays::stream)
+                .toArray();
+
         numberOfGrains = grainPhases.length;
         numberOfGrainsPerPhase = getNumberOfGrainsPerPhase(numberOfPhases, numberOfGrains, grainPhases);
 
         log.info("Number of phases: {}", numberOfPhases);
         log.info("Number of grains: {}", numberOfGrains);
-        IntStream.range(0, numberOfPhases).forEach(phaseId ->
+        range(0, numberOfPhases).forEach(phaseId ->
             log.info("Phase #{}: {} grains, symmetry {}", phaseId, numberOfGrainsPerPhase[phaseId],
                 phaseCrystalStructures[phaseId]));
     }
@@ -99,40 +106,54 @@ public class Dream3DToGbdatImporter extends SwingWorker<Void, Void> {
     @Override
     protected Void doInBackground() throws Exception {
         firePropertyChange(STATUS_MESSAGE_PROPERTY, "", "Reading Dream.3D File");
+        try {
 
-        byte[] surfaceGrains = (byte[]) dream3DFile.readDataSet(dataSetPaths.getSurfaceGrains());
-        numberOfSurfaceGrains = getNumberOfSurfaceGrains(surfaceGrains);
 
-        EulerAngles[] grainEulerAngles = readGrainEulerAngles(dataSetPaths.getGrainEulerAngles(), numberOfGrains);
+            int[] surfaceGrains = stream((int[][]) dream3DFile.readDataSet(dataSetPaths.getSurfaceGrains()))
+                    .flatMapToInt(Arrays::stream)
+                    .toArray();
 
-        double[] faceAreas = (double[]) dream3DFile.readDataSet(dataSetPaths.getFaceAreas());
-        int numberOfFaces = faceAreas.length;
+            numberOfSurfaceGrains = getNumberOfSurfaceGrains(surfaceGrains);
 
-        List<IntPair> faceGrainIds = readFaceGrainIds(dataSetPaths.getFaceGrainIds(), numberOfFaces);
+            EulerAngles[] grainEulerAngles = readGrainEulerAngles(dataSetPaths.getGrainEulerAngles(), numberOfGrains);
 
-        UnitVector[] faceNormals = readFaceNormals(dataSetPaths.getFaceNormals(), numberOfFaces);
+            double[] faceAreas = stream((double[][]) dream3DFile.readDataSet(dataSetPaths.getFaceAreas()))
+                    .flatMapToDouble(Arrays::stream)
+                    .toArray();
 
-        byte[] nodeTypes = (byte[]) dream3DFile.readDataSet(dataSetPaths.getNodeTypes());
+            int numberOfFaces = faceAreas.length;
 
-        List<LongTriple> nodesPerFace = readNodesPerFace(dataSetPaths.getFaceNodes(), numberOfFaces);
+            List<IntPair> faceGrainIds = readFaceGrainIds(dataSetPaths.getFaceGrainIds(), numberOfFaces);
 
-        Map<IntPair, Set<Integer>> grainIdsFaceIds = groupFacesByGrainIds(numberOfFaces, faceGrainIds,
-            importSettings, nodeTypes, nodesPerFace, surfaceGrains);
+            UnitVector[] faceNormals = readFaceNormals(dataSetPaths.getFaceNormals(), numberOfFaces);
 
-       // log.info("Grouping faces by grain ids took: {} millis.", currentTimeMillis() - startTime);
-        log.info("Number of boundaries: {}", grainIdsFaceIds.size());
-        faceStatistics = new DescriptiveStatistics();
-        grainIdsFaceIds.forEach((grainIds, faceIds) -> faceStatistics.addValue(faceIds.size()));
-        log.info("Min. number of faces: {}", faceStatistics.getMin());
-        log.info("Max. number of faces: {}", faceStatistics.getMax());
-        log.info("Mean number of faces: {}", faceStatistics.getMean());
-        log.info("Standard deviation: {}", faceStatistics.getStandardDeviation());
-        log.info("Median: {}", faceStatistics.getPercentile(50));
-        log.info("Skewness: {}", faceStatistics.getSkewness());
-        log.info("Kurtosis: {}", faceStatistics.getKurtosis());
+            byte[][] nodeTypesRaw = (byte[][]) dream3DFile.readDataSet(dataSetPaths.getNodeTypes());
+            byte[] nodeTypes = new byte[nodeTypesRaw.length];
+            for (int index = 0; index < nodeTypesRaw.length; index++) {
+                nodeTypes[index] = nodeTypesRaw[index][0];
+            }
 
-        //for simplification
-        nodeCoordinates = readNodeCoordinates(dataSetPaths.getNodeCoordinates());
+            List<LongTriple> nodesPerFace = readNodesPerFace(dataSetPaths.getFaceNodes(), numberOfFaces);
+
+            Map<IntPair, Set<Integer>> grainIdsFaceIds = groupFacesByGrainIds(numberOfFaces, faceGrainIds,
+                    importSettings, nodeTypes, nodesPerFace, surfaceGrains);
+
+            // log.info("Grouping faces by grain ids took: {} millis.", currentTimeMillis() - startTime);
+            log.info("Number of boundaries: {}", grainIdsFaceIds.size());
+            faceStatistics = new DescriptiveStatistics();
+            grainIdsFaceIds.forEach((grainIds, faceIds) -> faceStatistics.addValue(faceIds.size()));
+            log.info("Min. number of faces: {}", faceStatistics.getMin());
+            log.info("Max. number of faces: {}", faceStatistics.getMax());
+            log.info("Mean number of faces: {}", faceStatistics.getMean());
+            log.info("Standard deviation: {}", faceStatistics.getStandardDeviation());
+            log.info("Median: {}", faceStatistics.getPercentile(50));
+            log.info("Skewness: {}", faceStatistics.getSkewness());
+            log.info("Kurtosis: {}", faceStatistics.getKurtosis());
+
+            //for simplification
+            nodeCoordinates = readNodeCoordinates(dataSetPaths.getNodeCoordinates());
+
+
         List<DoubleTriple> vtkVertices = new ArrayList<>();
         List<Triple<Integer, Integer, Integer>> vtkTriangleVertices = new ArrayList<>();
         List<IntPair> vtkGrainIds = new ArrayList<>();
@@ -303,78 +324,79 @@ public class Dream3DToGbdatImporter extends SwingWorker<Void, Void> {
         log.info("Number of non-interior faces: {}", numberOfNonInteriorFaces);
         log.info("Number of surface grains: {}", numberOfSurfaceGrains);
         log.info("Number of surface faces: {}", numberOfSurfaceFaces);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         return null;
 
     }
 
     private int[] getNumberOfGrainsPerPhase(int numberOfPhases, int numberOfGrains, int[] grainPhases) {
-        int[] grainsPerPhase = IntStream.range(0, numberOfPhases).map(phaseId -> 0).toArray();
-        IntStream.range(0, numberOfGrains).forEach(grainId -> {
+        int[] grainsPerPhase = range(0, numberOfPhases).map(phaseId -> 0).toArray();
+        range(0, numberOfGrains).forEach(grainId -> {
             int grainPhaseId = grainPhases[grainId];
             grainsPerPhase[grainPhaseId]++;
         });
         return grainsPerPhase;
     }
 
-    private int getNumberOfSurfaceGrains(byte[] surfaceGrains) {
+    private int getNumberOfSurfaceGrains(int[] surfaceGrains) {
         int surfaceGrainsCounter = 0;
-        for (byte b : surfaceGrains) {
+        for (int b : surfaceGrains) {
             surfaceGrainsCounter += b;
         }
         return surfaceGrainsCounter;
     }
 
-    private EulerAngles[] readGrainEulerAngles(String grainEulerAnglesPath, int numberOfGrains) throws Exception {
-        float[] rawGrainEulerAngles = (float[]) dream3DFile.readDataSet(grainEulerAnglesPath);
+    private EulerAngles[] readGrainEulerAngles(String grainEulerAnglesPath, int numberOfGrains) {
+        float[][] rawGrainEulerAngles = (float[][]) dream3DFile.readDataSet(grainEulerAnglesPath);
         EulerAngles[] grainEulerAngles = new EulerAngles[numberOfGrains];
-        IntStream.range(0, numberOfGrains).forEach(grainId -> {
+        range(0, numberOfGrains).forEach(grainId -> {
             grainEulerAngles[grainId] = new EulerAngles();
-            int idTimes3 = 3 * grainId;
             grainEulerAngles[grainId].set(
-                rawGrainEulerAngles[idTimes3],
-                rawGrainEulerAngles[idTimes3 + 1],
-                rawGrainEulerAngles[idTimes3 + 2]);
+                rawGrainEulerAngles[grainId][0],
+                rawGrainEulerAngles[grainId][1],
+                rawGrainEulerAngles[grainId][2]);
         });
         return grainEulerAngles;
     }
 
-    private List<IntPair> readFaceGrainIds(String faceGrainIdsPath, int numberOfFaces) throws Exception {
-        int[] rawFaceGrainIds = (int[]) dream3DFile.readDataSet(faceGrainIdsPath);
+    private List<IntPair> readFaceGrainIds(String faceGrainIdsPath, int numberOfFaces) {
+        int[][] rawFaceGrainIds = (int[][]) dream3DFile.readDataSet(faceGrainIdsPath);
         List<IntPair> faceGrainIds = new ArrayList<>(numberOfFaces);
-        IntStream.range(0, numberOfFaces).forEach(faceId -> {
-            int idTimes2 = 2 * faceId;
-            faceGrainIds.add(IntPair.of(rawFaceGrainIds[idTimes2], rawFaceGrainIds[idTimes2 + 1]));
+        range(0, numberOfFaces).forEach(faceId -> {
+            faceGrainIds.add(IntPair.of(rawFaceGrainIds[faceId][0], rawFaceGrainIds[faceId][1]));
         });
         return faceGrainIds;
     }
 
     private UnitVector[] readFaceNormals(String faceNormalsPath, int numberOfFaces) throws Exception {
-        double[] rawFaceNormals = (double[]) dream3DFile.readDataSet(faceNormalsPath);
+        double[][] rawFaceNormals = (double[][]) dream3DFile.readDataSet(faceNormalsPath);
         UnitVector[] faceNormals = new UnitVector[numberOfFaces];
-        IntStream.range(0, numberOfFaces).forEach(faceId -> {
-            int idTimes3 = 3 * faceId;
+        range(0, numberOfFaces).forEach(faceId -> {
             faceNormals[faceId] = new UnitVector();
             faceNormals[faceId].set(
-                rawFaceNormals[idTimes3],
-                rawFaceNormals[idTimes3 + 1],
-                rawFaceNormals[idTimes3 + 2]);
+                rawFaceNormals[faceId][0],
+                rawFaceNormals[faceId][1],
+                rawFaceNormals[faceId][2]);
         });
         return faceNormals;
     }
 
     private List<LongTriple> readNodesPerFace(String nodesPerFacePath, int numberOfFaces) throws Exception {
-        long[] rawNodesPerFace = (long[]) dream3DFile.readDataSet(nodesPerFacePath);
+        long[][] rawNodesPerFace = (long[][]) dream3DFile.readDataSet(nodesPerFacePath);
         List<LongTriple> nodesPerFace = new ArrayList<>(numberOfFaces);
-        IntStream.range(0, numberOfFaces).forEach(faceId -> {
-            int idTimes3 = 3 * faceId;
-            nodesPerFace.add(LongTriple.of(rawNodesPerFace[idTimes3], rawNodesPerFace[idTimes3 + 1],
-                rawNodesPerFace[idTimes3 + 2]));
+        range(0, numberOfFaces).forEach(faceId -> {
+            nodesPerFace.add(LongTriple.of(
+                    rawNodesPerFace[faceId][0],
+                    rawNodesPerFace[faceId][1],
+                    rawNodesPerFace[faceId][2]));
         });
         return nodesPerFace;
     }
 
     private Map<IntPair, Set<Integer>> groupFacesByGrainIds(int numberOfFaces, List<IntPair> faceGrainIds,
-        Dream3DImportSettings settings, byte[] nodeTypes, List<LongTriple> nodesPerFace, byte[] surfaceGrains) {
+        Dream3DImportSettings settings, byte[] nodeTypes, List<LongTriple> nodesPerFace, int[] surfaceGrains) {
 
         Map<IntPair, Set<Integer>> grainsIdsToFaceIds = new HashMap<>();
         numberOfNonInteriorFaces = 0;
@@ -431,7 +453,7 @@ public class Dream3DToGbdatImporter extends SwingWorker<Void, Void> {
         return faceGrainIds.getLeft() < 0 || faceGrainIds.getRight() < 0;
     }
 
-    private boolean areBothGrainsOnSurface(byte[] surfaceGrains, int leftGrainId, int rightGrainId) {
+    private boolean areBothGrainsOnSurface(int[] surfaceGrains, int leftGrainId, int rightGrainId) {
         return surfaceGrains[leftGrainId] == 1 && surfaceGrains[rightGrainId] == 1;
     }
 
@@ -442,14 +464,7 @@ public class Dream3DToGbdatImporter extends SwingWorker<Void, Void> {
     }
 
     private float[][] readNodeCoordinates(String nodeCoordinatesPath) throws Exception {
-        float[] rawNodeCoordinates = (float[]) dream3DFile.readDataSet(nodeCoordinatesPath);
-        float[][] coordinates = new float[rawNodeCoordinates.length / 3][3];
-        IntStream.range(0, rawNodeCoordinates.length / 3).forEach(nodeId -> {
-            int idTimes3 = 3 * nodeId;
-            coordinates[nodeId][0] = rawNodeCoordinates[idTimes3];
-            coordinates[nodeId][1] = rawNodeCoordinates[idTimes3 + 1];
-            coordinates[nodeId][2] = rawNodeCoordinates[idTimes3 + 2];
-        });
+        float[][] coordinates = (float[][]) dream3DFile.readDataSet(nodeCoordinatesPath);
         log.debug("Read coordinates of {} nodes", coordinates.length);
         return coordinates;
     }
