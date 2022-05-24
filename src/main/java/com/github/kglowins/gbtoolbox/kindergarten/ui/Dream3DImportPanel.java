@@ -56,7 +56,7 @@ public class Dream3DImportPanel extends JPanel {
 	private JLabel dreamFileLabel;
 	private JTextField dreamFileTextField;
 	private JButton dreamFileButton;
-	private GbdatOrDreamFileChooser fileChooser;
+	private GbdatOrDreamOrQSlimFileChooser fileChooser;
 
 	private JLabel phasesLabel;
 	private JComboBox<String> phasesComboBox;
@@ -142,7 +142,7 @@ public class Dream3DImportPanel extends JPanel {
 	}
 
 	private void initializeElements() {
-		fileChooser = new GbdatOrDreamFileChooser();
+		fileChooser = new GbdatOrDreamOrQSlimFileChooser();
 
 		dreamFileLabel = new JLabel("Dream3D File:");
 		dreamFileTextField = new JTextField();
@@ -211,6 +211,14 @@ public class Dream3DImportPanel extends JPanel {
 		cancelButton.addActionListener(click -> {
 			importer.firePropertyChange(STATUS_MESSAGE_PROPERTY, "","Import Cancelled");
 			importer.cancel(true);
+		});
+
+		qSlimButton.addActionListener(click -> {
+			fileChooser.resetFilters();
+			int result = fileChooser.showOpenDialog(this);
+			if (result == JFileChooser.APPROVE_OPTION) {
+				qSlimTextField.setText(fileChooser.getSelectedFile().getAbsolutePath());
+			}
 		});
 
 		statusLabel = new JLabel("");
@@ -295,14 +303,15 @@ public class Dream3DImportPanel extends JPanel {
 		nodeCoordinatesComboBox.setSelectedItem(guessedDataSetPaths.getNodeCoordinates());
 	}
 
-	private static class GbdatOrDreamFileChooser extends JFileChooser {
+	private static class GbdatOrDreamOrQSlimFileChooser extends JFileChooser {
 
-		public GbdatOrDreamFileChooser() {
-			setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
+		public GbdatOrDreamOrQSlimFileChooser() {
+			setFileSelectionMode(FILES_AND_DIRECTORIES);
 		}
 
 		public void setToFilterDream3D() {
 			resetChoosableFileFilters();
+			setAcceptAllFileFilterUsed(false);
 			addChoosableFileFilter(new FileNameExtensionFilter("*.dream3d", "dream3d"));
 		}
 
@@ -310,6 +319,11 @@ public class Dream3DImportPanel extends JPanel {
 			resetChoosableFileFilters();
 			setAcceptAllFileFilterUsed(false);
 			addChoosableFileFilter(new FileNameExtensionFilter("*.gbdat", "gbdat"));
+		}
+
+		public void resetFilters() {
+			resetChoosableFileFilters();
+			setAcceptAllFileFilterUsed(false);
 		}
 	}
 
