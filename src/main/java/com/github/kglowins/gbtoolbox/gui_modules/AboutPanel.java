@@ -53,7 +53,7 @@ public class AboutPanel extends JPanel {
 				"&nbsp;&nbsp;- Appache Commons\u2122 Math 3.4.1 (<code>http://commons.apache.org/proper/commons-math</code>),<br>"+
 				"&nbsp;&nbsp;- VectorGraphics2D 0.9 (<code>http://trac.erichseifert.de/vectorgraphics2d</code>),<br>" +
 				"&nbsp;&nbsp;- JAMA 1.0.3 (<code>http://math.nist.gov/javanumerics/jama</code>),<br>"+
-				"&nbsp;&nbsp;- hdf-java from HPE CCT (<code>https://github.com/hpe-cct/hdf-java</code>),<br>" +
+				"&nbsp;&nbsp;- jHDF 0.6.6 (<code>https://github.com/jamesmudd/jhdf</code>),<br>" +
 				"&nbsp;&nbsp;- JMathPlot (an old version downloaded from <code>http://jmathtools.berlios.de</code>),<br>"+
 				"&nbsp;&nbsp;- Java-ML 0.1.5 (<code>http://java-ml.sourceforge.net</code>),<br>"+
 				"&nbsp;&nbsp;- JFontChooser 1.0.5 (<code>http://jfontchooser.osdn.jp</code>).<br><br>"+
