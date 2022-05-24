@@ -20,6 +20,11 @@ allowing for import of grain boundary data from
 the latest version of DREAM.3D (6.5), 
 so *GBToolbox* is back in the game.
 
-Note: Module "Draw delected GBs" still does not support the latest DREAM.3D.
+#### May 2022 ####
+- Reading of HDF (thus, Dream3D) files has been migrated to [pure-Java jHDF library](https://github.com/jamesmudd/jhdf).
+ This removes dependencies to all native libraries. The module *Draw delected GBs* 
+is migrated too.
+- Fixed the button for searching for QSlim binaries.
+
 
 Krzysztof Głowiński
